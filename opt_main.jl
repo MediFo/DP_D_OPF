@@ -75,8 +75,8 @@ function update_θ_sparse(gen, bus, line, B, refbus, μ, θ̅, ρ)
                 sum(B[i, j] * θ[(i,j)] for j in bus[i].N) ==
                 sum(p[g] for g in bus[i].G) - bus[i].d + l[i])
 
-    # Reference bus
-    @constraint(model, κ[i=1:Nb], θ[(i, refbus)] == 0)
+    # Reference bus - ONLY for buses that have refbus as neighbor
+    @constraint(model, κ[i=1:Nb; refbus in bus[i].N], θ[(i, refbus)] == 0)
 
     # Generator buses have no load flexibility
     for i in 1:Nb
