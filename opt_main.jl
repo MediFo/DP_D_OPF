@@ -314,7 +314,7 @@ total_other_time = 0.0
 θ_sparse = Dict{Tuple{Int,Int}, Float64}()
 
 for ν in 2:ν̅
-    global μ, final_iter, converged, θ_sparse
+    global μ, final_iter, converged, θ_sparse, θ̅
     global total_opt_time, total_crypto_time, total_other_time
 
     iter_start = time()
