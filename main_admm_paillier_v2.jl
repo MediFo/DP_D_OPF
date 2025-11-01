@@ -182,15 +182,23 @@ println("  ✓ Using $(key_length)-bit Paillier encryption")
 # [5] Run ADMM with Paillier encryption
 # ─────────────────────────────────────────────────────────────────────────────
 println("\n[6/6] Running Boyd's Consensus ADMM with Paillier encryption...")
-println("\n" * "─"^80)
-@printf("%-6s %-15s %-15s %-15s %-10s\n", "Iter", "Cost (\$)", "Residual", "Δ Residual", "Time(s)")
-println("─"^80)
+println("\nDetailed timing: OPT=Optimization, ENC=Encryption, CON=Consensus, DEC=Decryption")
+println("\n" * "─"^110)
+@printf("%-5s %-12s %-12s %-10s | %-8s %-8s %-8s | %-10s\n",
+        "Iter", "Cost(\$)", "Residual", "Δ Res", "OPT(s)", "CRYPTO(s)", "OTHER(s)", "Total(s)")
+println("─"^110)
 
 converged = false
 final_iter = ν̅
 
+# Timing accumulators
+total_opt_time = 0.0
+total_crypto_time = 0.0
+total_other_time = 0.0
+
 for ν in 2:ν̅
     global μ, final_iter, converged  # Declare global variables modified in loop
+    global total_opt_time, total_crypto_time, total_other_time  # Timing accumulators
 
     iter_start = time()
 
@@ -198,38 +206,53 @@ for ν in 2:ν̅
     # ADMM ITERATION (using original DP_D_OPF scripts + Paillier encryption)
     # ═══════════════════════════════════════════════════════════════════════
 
-    # Step 1: Primal update (original function)
-    # Each agent solves local OPF
+    # Step 1: Primal update (OPTIMIZATION)
+    opt_start = time()
     (θ[:, :, ν], cost[ν], p[:, ν], l[:, ν]) =
         update_θ(gen, bus, line, B, refbus, μ, θ̅[:, ν-1], ρ)
+    opt_time = time() - opt_start
 
-    # Step 2: Encrypt θ values before sharing
+    # Step 2: Encrypt θ values (CRYPTOGRAPHY - Encryption)
+    enc_start = time()
     θ_enc = encrypt_θ_matrix(keypair.public_key, bus, θ[:, :, ν])
+    enc_time = time() - enc_start
 
-    # Step 3: Homomorphic consensus update (encrypted averaging)
+    # Step 3: Homomorphic consensus (CRYPTOGRAPHY - Homomorphic ops + Decryption)
+    cons_start = time()
     (θ̅[:, ν], θ̅_enc) =
         update_θ̅_homomorphic(keypair.public_key, keypair.private_key, bus, θ_enc)
+    cons_time = time() - cons_start
 
-    # Step 4: Dual update (original function, uses plaintext locally)
+    # Total crypto time = encryption + consensus (includes decryption)
+    crypto_time = enc_time + cons_time
+
+    # Step 4: Dual update (LOCAL - no encryption)
+    dual_start = time()
     μ = update_μ(bus, ρ, θ[:, :, ν], θ̅[:, ν], μ)
 
-    # Step 5: Compute residual (original function)
+    # Step 5: Compute residual
     residuals[ν] = residual(bus, θ[:, :, ν], θ̅[:, ν])
+    other_time = time() - dual_start
 
     # ═══════════════════════════════════════════════════════════════════════
 
     iter_time = time() - iter_start
 
-    # Print progress
+    # Accumulate times
+    total_opt_time += opt_time
+    total_crypto_time += crypto_time
+    total_other_time += other_time
+
+    # Print progress with timing breakdown
     if ν == 2 || ν % 10 == 0 || residuals[ν] <= γ
         Δres = ν > 2 ? residuals[ν-1] - residuals[ν] : 0.0
-        @printf("%-6d \$%-14.2f %-15.6f %-15.6f %-10.3f\n",
-                ν, cost[ν], residuals[ν], Δres, iter_time)
+        @printf("%-5d \$%-11.2f %-12.6f %-10.6f | %-8.3f %-8.3f %-8.3f | %-10.3f\n",
+                ν, cost[ν], residuals[ν], Δres, opt_time, crypto_time, other_time, iter_time)
     end
 
     # Check convergence
     if residuals[ν] <= γ
-        println("─"^80)
+        println("─"^110)
         println("✅ CONVERGED at iteration $ν")
         println("   Residual $(round(residuals[ν], digits=6)) ≤ tolerance $γ")
         final_iter = ν
@@ -277,6 +300,47 @@ println("  Security:      Computational (ciphertext indistinguishability)")
 println("  Privacy:       Voltage angles encrypted during sharing")
 println()
 
+# Timing breakdown summary
+total_time = total_opt_time + total_crypto_time + total_other_time
+avg_opt = total_opt_time / (final_iter - 1)
+avg_crypto = total_crypto_time / (final_iter - 1)
+avg_other = total_other_time / (final_iter - 1)
+avg_total = total_time / (final_iter - 1)
+
+pct_opt = (total_opt_time / total_time) * 100
+pct_crypto = (total_crypto_time / total_time) * 100
+pct_other = (total_other_time / total_time) * 100
+
+println("Performance Analysis:")
+println("─"^80)
+println("  Component              Total Time    Avg/Iter    Percentage")
+println("─"^80)
+@printf("  Optimization (OPF)     %-10.3fs    %-10.3fs    %5.1f%%\n",
+        total_opt_time, avg_opt, pct_opt)
+@printf("  Cryptography (Enc+Dec) %-10.3fs    %-10.3fs    %5.1f%%\n",
+        total_crypto_time, avg_crypto, pct_crypto)
+@printf("  Other (Dual+Residual)  %-10.3fs    %-10.3fs    %5.1f%%\n",
+        total_other_time, avg_other, pct_other)
+println("─"^80)
+@printf("  TOTAL                  %-10.3fs    %-10.3fs    100.0%%\n",
+        total_time, avg_total)
+println("─"^80)
+println()
+println("Key Insights:")
+if pct_crypto > 50
+    println("  ⚠  Cryptography is the bottleneck ($(round(pct_crypto, digits=1))% of time)")
+    println("     → Consider reducing key size for faster testing (1024→512 bit)")
+    println("     → Or reduce max iterations to get preliminary results")
+elseif pct_opt > 50
+    println("  ℹ  Optimization is dominant ($(round(pct_opt, digits=1))% of time)")
+    println("     → This is expected for well-tuned ADMM")
+    println("     → Cryptography overhead is reasonable")
+else
+    println("  ✓ Balanced time distribution between optimization and cryptography")
+end
+println("  ℹ  Encryption overhead: $(round(pct_crypto, digits=1))% vs baseline ADMM")
+println()
+
 # Dispatch comparison (first 10 buses)
 println("Dispatch Comparison (first 10 buses):")
 println("─"^80)
@@ -308,4 +372,5 @@ println("  • Uses original DP_D_OPF ADMM scripts (tested & verified)")
 println("  • Adds Paillier encryption layer for privacy")
 println("  • Homomorphic consensus ensures data privacy")
 println("  • Free Ipopt solver (no commercial license needed)")
+println("  • Detailed timing breakdown shows optimization vs cryptography overhead")
 println()
