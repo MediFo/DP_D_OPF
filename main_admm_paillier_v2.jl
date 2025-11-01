@@ -115,13 +115,13 @@ caseID_options = [
 caseID = ""
 for case in caseID_options
     if isfile(case)
-        caseID = case
+        global caseID = case
         break
     end
 end
 
 if caseID == ""
-    caseID = "testbeds/pglib_opf_case14_ieee.m"  # Default
+    global caseID = "testbeds/pglib_opf_case14_ieee.m"  # Default
 end
 
 network_name = split(split(caseID, "/")[end], ".")[1]
@@ -190,6 +190,8 @@ converged = false
 final_iter = ν̅
 
 for ν in 2:ν̅
+    global μ, final_iter, converged  # Declare global variables modified in loop
+
     iter_start = time()
 
     # ═══════════════════════════════════════════════════════════════════════

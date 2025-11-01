@@ -236,6 +236,8 @@ converged = false
 final_iter = ν̅
 
 for ν in 1:ν̅
+    global μ, θ_plain, θ̅_plain, final_iter, converged  # Declare global variables modified in loop
+
     iter_start = time()
 
     # Step 1: Primal update (each agent solves local OPF and encrypts solution)
