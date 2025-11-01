@@ -1,0 +1,44 @@
+{
+  "simulation_name": "Edge_OPF_Evaluation",
+  "description": "Example configuration for edge OPF evaluation",
+
+  "edge_infrastructure": {
+    "num_servers": 3,
+    "server_specs": {
+      "cpu_cores": 4,
+      "cpu_freq_ghz": 2.4,
+      "memory_gb": 8.0,
+      "storage_gb": 100.0,
+      "power_idle_w": 50.0,
+      "power_max_w": 150.0
+    },
+    "network": {
+      "bandwidth_mbps": 100.0,
+      "latency_ms": 10.0,
+      "packet_loss_rate": 0.001
+    }
+  },
+
+  "opf_config": {
+    "caseID": "testbeds/pglib_opf_case14_ieee.m",
+    "max_iterations": 1000,
+    "rho": 1000.0,
+    "tolerance": 0.01,
+    "epsilon": 1.0,
+    "alpha": 0.1,
+    "method": "PVP"
+  },
+
+  "execution": {
+    "mode": "comparison",
+    "parallel": true,
+    "export_csv": true,
+    "generate_plots": true
+  },
+
+  "output": {
+    "results_dir": "edge/results",
+    "plots_dir": "edge/plots",
+    "timestamp_format": "%Y%m%d_%H%M%S"
+  }
+}
