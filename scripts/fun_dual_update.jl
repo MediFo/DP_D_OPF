@@ -7,7 +7,7 @@ function update_μ(bus,ρ,θ,θ̅,μ)
     Nb = length(bus)
     mu = ones(Nb,Nb)
     for i in 1:Nb, j in bus[i].N
-        mu[i,j] = μ[i,j] + ρ * (θ̅[j] - θ[i,j])
+        mu[i,j] = μ[i,j] + ρ * (θ[i,j] - θ̅[j])
     end
     return mu
 end
