@@ -6,7 +6,9 @@ Combines the ADMM formulation from DP_D_OPF with Paillier encryption
 using PowerModels
 using DataStructures: SortedDict
 using JuMP
-using Gurobi
+# using Gurobi  # Commercial solver (commented out)
+using Ipopt     # Free nonlinear solver (recommended for DC-OPF with quadratic costs)
+# using GLPK    # Free linear solver (alternative, but doesn't support quadratic objectives)
 using DataFrames
 using LinearAlgebra
 using CSV
@@ -29,10 +31,16 @@ function update_θ_encrypted(gen, bus, line, B, refbus, μ_plain, θ̅_plain, ρ
     Nb = length(bus)
     Nl = length(line)
 
-    model = Model(optimizer_with_attributes(() -> Gurobi.Optimizer(gurobi_env),
-                                           "Method" => 2,
-                                           "Presolve" => 1,
-                                           "OutputFlag" => 0))
+    # Free solver (Ipopt)
+    model = Model(optimizer_with_attributes(Ipopt.Optimizer,
+                                           "print_level" => 0,
+                                           "sb" => "yes"))  # Suppress banner
+
+    # Commercial solver (Gurobi) - Uncomment if you have a license
+    # model = Model(optimizer_with_attributes(() -> Gurobi.Optimizer(gurobi_env),
+    #                                        "Method" => 2,
+    #                                        "Presolve" => 1,
+    #                                        "OutputFlag" => 0))
 
     @variable(model, p[1:Ng])
     @variable(model, θ[1:Nb, 1:Nb])
@@ -175,8 +183,8 @@ end
 (gen, bus, line, B, refbus) = load_data(caseID)
 println("  ✓ Network loaded: $(length(bus)) buses, $(length(gen)) generators, $(length(line)) lines")
 
-# Initialize Gurobi environment
-global gurobi_env = Gurobi.Env()
+# Initialize Gurobi environment (commented out - using free solver instead)
+# global gurobi_env = Gurobi.Env()
 
 # Solve centralized OPF for comparison
 println("\n[2/6] Solving centralized OPF (baseline)...")

@@ -7,7 +7,13 @@ function update_θ(gen,bus,line,B,refbus,μ,θ̅,ρ)
     Ng = length(gen)
     Nb = length(bus)
     Nl = length(line)
-    model = Model(with_optimizer(Gurobi.Optimizer,gurobi_env,Method=2,Presolve=1,OutputFlag=0))
+    # Free solver (Ipopt)
+    model = Model(optimizer_with_attributes(Ipopt.Optimizer,
+                                           "print_level" => 0,
+                                           "sb" => "yes"))
+
+    # Commercial solver (Gurobi) - Uncomment if you have a license
+    # model = Model(with_optimizer(Gurobi.Optimizer,gurobi_env,Method=2,Presolve=1,OutputFlag=0))
     @variable(model, p[1:Ng])
     @variable(model, θ[1:Nb,1:Nb])
     @variable(model, l[1:Nb])

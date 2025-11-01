@@ -1,7 +1,8 @@
 using PowerModels
 using DataStructures: SortedDict
 using JuMP
-using Gurobi
+# using Gurobi  # Commercial solver (commented out)
+using Ipopt     # Free nonlinear solver
 using DataFrames
 using LinearAlgebra
 using CSV
@@ -20,8 +21,8 @@ include("scripts/fun_voltage_update.jl")
 # load data
 caseID="testbeds/pglib_opf_case14_ieee.m"
 (gen,bus,line,B,refbus)=load_data(caseID)
-# initialize Gurobi environment
-gurobi_env = Gurobi.Env()
+# initialize Gurobi environment (commented out - using free solver instead)
+# gurobi_env = Gurobi.Env()
 # solve the centralized OPF problem
 (cost_c,dispatch_c,power_flow_c)=OPF_centralized(gen,bus,line,B,refbus)
 # create and specify ADMM and model parameters

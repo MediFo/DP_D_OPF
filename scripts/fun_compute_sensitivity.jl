@@ -14,7 +14,13 @@ function sensitivities(gen,bus,line,B,refbus,ρ,method,α)
         bus[i].type == 1 ? push!(PV_buses,i) : NaN
         bus[i].type == 2 ? push!(PQ_buses,i) : NaN
     end
-    m = Model(with_optimizer(Gurobi.Optimizer,gurobi_env,Method=2,Presolve=1,OutputFlag=0))
+    # Free solver (Ipopt)
+    m = Model(optimizer_with_attributes(Ipopt.Optimizer,
+                                       "print_level" => 0,
+                                       "sb" => "yes"))
+
+    # Commercial solver (Gurobi) - Uncomment if you have a license
+    # m = Model(with_optimizer(Gurobi.Optimizer,gurobi_env,Method=2,Presolve=1,OutputFlag=0))
     @variable(m, p[1:Ng]>=0)
     @variable(m, l[1:Nb])
     @variable(m, θ[1:Nb,1:Nb])

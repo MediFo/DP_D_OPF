@@ -69,10 +69,25 @@ julia main_admm_paillier.jl
 ```julia
 using PowerModels
 using JuMP
-using Gurobi
+# using Gurobi      # Commercial solver (optional)
+using Ipopt         # Free nonlinear solver (recommended)
 using DataFrames
 using LinearAlgebra
-using Primes  # For Paillier encryption
+using Primes        # For Paillier encryption
+```
+
+**Installation of required packages:**
+```julia
+using Pkg
+Pkg.add("PowerModels")
+Pkg.add("JuMP")
+Pkg.add("Ipopt")          # Free solver
+Pkg.add("DataFrames")
+Pkg.add("LinearAlgebra")
+Pkg.add("Primes")         # For Paillier crypto
+Pkg.add("DataStructures")
+Pkg.add("CSV")
+Pkg.add("Printf")
 ```
 
 ### Configuration
@@ -88,6 +103,22 @@ Edit `main_admm_paillier.jl` to adjust parameters:
 # Encryption Parameters
 key_length = 1024   # 1024-bit for testing, 2048-bit for production
 ```
+
+### Solver Options
+
+By default, the code uses **Ipopt** (free, open-source nonlinear solver).
+
+**To switch to Gurobi** (if you have a license):
+1. Uncomment `using Gurobi` at the top of files
+2. Uncomment Gurobi optimizer sections in the code
+3. Comment out Ipopt sections
+
+**Files to modify for solver change:**
+- `main_admm_paillier.jl`
+- `main.jl`
+- `scripts/fun_centralized_OPF.jl`
+- `scripts/fun_voltage_update.jl`
+- `scripts/fun_compute_sensitivity.jl`
 
 ## Using IEEE 33-Bus Network
 
@@ -205,11 +236,18 @@ Cost Comparison:
 2. Adjust ρ parameter (try 10, 50, 100)
 3. Increase max iterations
 
-### "Gurobi not found"
-**Solution**: Install Gurobi or use free solver:
+### "Gurobi not found" or solver errors
+**Solution**: The code now uses Ipopt (free solver) by default. Install it:
 ```julia
-using GLPK
-model = Model(GLPK.Optimizer)
+using Pkg
+Pkg.add("Ipopt")
+```
+
+If you prefer GLPK for linear problems (doesn't support quadratic objectives):
+```julia
+using Pkg
+Pkg.add("GLPK")
+# Then modify code to use: Model(GLPK.Optimizer)
 ```
 
 ## Comparison with DP_D_OPF

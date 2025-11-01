@@ -7,7 +7,13 @@ function OPF_centralized(gen,bus,line,B,refbus)
     Ng = length(gen)
     Nb = length(bus)
     Nl = length(line)
-    m = Model(with_optimizer(Gurobi.Optimizer, gurobi_env, Presolve=0, OutputFlag = 0))
+    # Free solver (Ipopt)
+    m = Model(optimizer_with_attributes(Ipopt.Optimizer,
+                                       "print_level" => 0,
+                                       "sb" => "yes"))
+
+    # Commercial solver (Gurobi) - Uncomment if you have a license
+    # m = Model(with_optimizer(Gurobi.Optimizer, gurobi_env, Presolve=0, OutputFlag = 0))
     @variable(m, p[1:Ng])
     @variable(m, θ[1:Nb])
     @variable(m, l[1:Nb])
