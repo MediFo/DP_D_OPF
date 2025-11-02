@@ -90,17 +90,9 @@ function update_θ̅_sparse(bus, θ_sparse)
     θ̅ = zeros(Nb)
 
     for i in 1:Nb
-        # FIXED: Collect actual values and divide by actual count
-        neighbor_values = Float64[]
-        for j in bus[i].N
-            if haskey(θ_sparse, (j,i))
-                push!(neighbor_values, θ_sparse[(j,i)])
-            end
-        end
-
-        if !isempty(neighbor_values)
-            θ̅[i] = sum(neighbor_values) / length(neighbor_values)
-        end
+        # Boyd's consensus: average θ[j,i] over all neighbors j
+        # In symmetric network, θ[(j,i)] exists for all j ∈ bus[i].N
+        θ̅[i] = sum(θ_sparse[(j,i)] for j in bus[i].N) / length(bus[i].N)
     end
 
     return θ̅

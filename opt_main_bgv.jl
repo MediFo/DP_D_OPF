@@ -129,24 +129,16 @@ end
 
 """
 OPTIMIZED: Update consensus with sparse representation
+Following Boyd's Consensus ADMM - simple averaging over all neighbors
 """
 function update_θ̅_sparse(bus, θ_sparse)
     Nb = length(bus)
     θ̅ = zeros(Nb)
 
     for i in 1:Nb
-        # Collect values from neighbors that have this bus as neighbor
-        neighbor_values = Float64[]
-        for j in bus[i].N
-            if haskey(θ_sparse, (j,i))
-                push!(neighbor_values, θ_sparse[(j,i)])
-            end
-        end
-
-        # Average over actual values (not total neighbor count!)
-        if !isempty(neighbor_values)
-            θ̅[i] = sum(neighbor_values) / length(neighbor_values)
-        end
+        # Boyd's consensus: average θ[j,i] over all neighbors j
+        # In symmetric network, θ[(j,i)] exists for all j ∈ bus[i].N
+        θ̅[i] = sum(θ_sparse[(j,i)] for j in bus[i].N) / length(bus[i].N)
     end
 
     return θ̅
