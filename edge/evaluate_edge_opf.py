@@ -37,10 +37,10 @@ def run_distributed_evaluation(num_servers: int = 3,
     # Create simulator
     sim = EdgeOPFSimulator(f"Distributed_OPF_{num_servers}_Servers")
 
-    # Setup edge infrastructure
+    # Setup edge infrastructure with power grid topology
     if config_file:
         # Use custom hardware configs from JSON
-        sim.setup_edge_infrastructure(num_servers=num_servers, config_file=config_file)
+        sim.setup_edge_infrastructure(num_servers=num_servers, config_file=config_file, case_file=case_id)
     else:
         # Use default specs for all servers
         server_specs = ServerSpecs(
@@ -51,7 +51,7 @@ def run_distributed_evaluation(num_servers: int = 3,
             power_idle_w=50.0,
             power_max_w=150.0
         )
-        sim.setup_edge_infrastructure(num_servers=num_servers, server_specs=server_specs)
+        sim.setup_edge_infrastructure(num_servers=num_servers, server_specs=server_specs, case_file=case_id)
 
     # Configure Julia OPF
     julia_config = JuliaConfig(
@@ -131,10 +131,10 @@ def run_centralized_evaluation(case_id: str = "testbeds/pglib_opf_case14_ieee.m"
     # Create simulator
     sim = EdgeOPFSimulator("Centralized_OPF")
 
-    # Setup single edge server
+    # Setup single edge server (no topology needed for centralized)
     if config_file:
         # Use first device from config file
-        sim.setup_edge_infrastructure(num_servers=1, config_file=config_file)
+        sim.setup_edge_infrastructure(num_servers=1, config_file=config_file, case_file=None)
     else:
         # Use default specs
         server_specs = ServerSpecs(
@@ -145,7 +145,7 @@ def run_centralized_evaluation(case_id: str = "testbeds/pglib_opf_case14_ieee.m"
             power_idle_w=50.0,
             power_max_w=150.0
         )
-        sim.setup_edge_infrastructure(num_servers=1, server_specs=server_specs)
+        sim.setup_edge_infrastructure(num_servers=1, server_specs=server_specs, case_file=None)
 
     # Run centralized OPF
     config = {"caseID": case_id}

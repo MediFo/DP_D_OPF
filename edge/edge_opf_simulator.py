@@ -14,6 +14,7 @@ from edgesimpy.edge_server import EdgeServer, ServerSpecs
 from edgesimpy.edge_service import EdgeService, ServiceRequirements
 from edgesimpy.network_link import NetworkLink, LinkSpecs
 from julia_wrapper import JuliaOPFExecutor, JuliaConfig
+from power_grid_topology import get_bus_neighbors, get_grid_statistics
 
 
 class EdgeOPFSimulator:
@@ -187,15 +188,18 @@ class EdgeOPFSimulator:
     def setup_edge_infrastructure(self,
                                   num_servers: int = 3,
                                   server_specs: Optional[ServerSpecs] = None,
-                                  config_file: Optional[str] = None):
+                                  config_file: Optional[str] = None,
+                                  case_file: Optional[str] = None):
         """
-        Setup edge computing infrastructure
+        Setup edge computing infrastructure with topology matching power grid
 
         Args:
             num_servers: Number of edge servers to create
             server_specs: Hardware specifications for servers (same for all if provided)
             config_file: Path to JSON configuration file with device specifications
                         If provided, reads first num_servers devices from the file
+            case_file: Path to MATPOWER case file for network topology
+                      If provided, network links follow power grid topology
         """
         self.num_edge_servers = num_servers
 
@@ -280,37 +284,95 @@ class EdgeOPFSimulator:
 
             self.server_configs[server_id] = specs
 
-        # Create network links between servers (full mesh for ADMM)
+        # Create network links based on power grid topology
         link_id = 1
         print("\n  Creating network links:")
-        for i in range(num_servers):
-            for j in range(i + 1, num_servers):
-                source_id = i + 1
-                target_id = j + 1
 
-                # Determine link specs based on device network types
-                if config_file and i < len(self.device_configs) and j < len(self.device_configs):
-                    device1 = self.device_configs[i]
-                    device2 = self.device_configs[j]
-                    link_specs = self._get_network_link_specs(device1, device2)
-                    print(f"    Link {source_id}↔{target_id}: {link_specs.bandwidth_mbps:.0f} Mbps, {link_specs.latency_ms:.1f}ms latency")
-                else:
-                    # Default specs
-                    link_specs = LinkSpecs(
-                        bandwidth_mbps=100.0,
-                        latency_ms=10.0,
-                        packet_loss_rate=0.001
-                    )
+        if case_file:
+            # Use power grid topology for network connections
+            print(f"    Using topology from: {Path(case_file).name}")
+            grid_stats = get_grid_statistics(case_file)
+            bus_neighbors = grid_stats['neighbors']
 
-                # Source -> Target
-                self.simulator.add_link(link_id, source_id, target_id, link_specs)
-                link_id += 1
+            print(f"    Grid: {grid_stats['num_buses']} buses, {grid_stats['num_lines']} lines")
+            print(f"    Average connections per node: {grid_stats['avg_connections_per_bus']:.2f}")
 
-                # Target -> Source (symmetric link with same specs)
-                self.simulator.add_link(link_id, target_id, source_id, link_specs)
-                link_id += 1
+            # Create links only between neighboring buses
+            created_links = set()
 
-        print(f"\n✓ Created {num_servers} edge servers and {link_id - 1} network links")
+            for bus_id in range(1, num_servers + 1):
+                if bus_id not in bus_neighbors:
+                    continue
+
+                neighbors = bus_neighbors[bus_id]
+
+                for neighbor_id in neighbors:
+                    # Only create link if neighbor is within our server range
+                    if neighbor_id > num_servers:
+                        continue
+
+                    # Avoid creating duplicate bidirectional links
+                    link_pair = tuple(sorted([bus_id, neighbor_id]))
+                    if link_pair in created_links:
+                        continue
+
+                    created_links.add(link_pair)
+
+                    # Determine link specs based on device network types
+                    if config_file and (bus_id - 1) < len(self.device_configs) and (neighbor_id - 1) < len(self.device_configs):
+                        device1 = self.device_configs[bus_id - 1]
+                        device2 = self.device_configs[neighbor_id - 1]
+                        link_specs = self._get_network_link_specs(device1, device2)
+                        print(f"    Link {bus_id}↔{neighbor_id}: {link_specs.bandwidth_mbps:.0f} Mbps, {link_specs.latency_ms:.1f}ms latency")
+                    else:
+                        # Default specs
+                        link_specs = LinkSpecs(
+                            bandwidth_mbps=100.0,
+                            latency_ms=10.0,
+                            packet_loss_rate=0.001
+                        )
+                        print(f"    Link {bus_id}↔{neighbor_id}: {link_specs.bandwidth_mbps:.0f} Mbps, {link_specs.latency_ms:.1f}ms latency")
+
+                    # Create bidirectional links
+                    self.simulator.add_link(link_id, bus_id, neighbor_id, link_specs)
+                    link_id += 1
+
+                    self.simulator.add_link(link_id, neighbor_id, bus_id, link_specs)
+                    link_id += 1
+
+            print(f"\n✓ Created {num_servers} edge servers and {link_id - 1} network links (topology-based)")
+
+        else:
+            # Fallback to full mesh if no case file provided
+            print("    Using full mesh topology (no case file provided)")
+            for i in range(num_servers):
+                for j in range(i + 1, num_servers):
+                    source_id = i + 1
+                    target_id = j + 1
+
+                    # Determine link specs based on device network types
+                    if config_file and i < len(self.device_configs) and j < len(self.device_configs):
+                        device1 = self.device_configs[i]
+                        device2 = self.device_configs[j]
+                        link_specs = self._get_network_link_specs(device1, device2)
+                        print(f"    Link {source_id}↔{target_id}: {link_specs.bandwidth_mbps:.0f} Mbps, {link_specs.latency_ms:.1f}ms latency")
+                    else:
+                        # Default specs
+                        link_specs = LinkSpecs(
+                            bandwidth_mbps=100.0,
+                            latency_ms=10.0,
+                            packet_loss_rate=0.001
+                        )
+
+                    # Source -> Target
+                    self.simulator.add_link(link_id, source_id, target_id, link_specs)
+                    link_id += 1
+
+                    # Target -> Source (symmetric link with same specs)
+                    self.simulator.add_link(link_id, target_id, source_id, link_specs)
+                    link_id += 1
+
+            print(f"\n✓ Created {num_servers} edge servers and {link_id - 1} network links (full mesh)")
 
     def run_distributed_opf(self,
                            julia_config: Optional[JuliaConfig] = None,
