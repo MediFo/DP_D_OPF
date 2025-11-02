@@ -34,7 +34,7 @@ optional_packages = [
 ]
 
 println("Installing REQUIRED packages...")
-println("-" * 80)
+println("-"^80)
 
 for pkg in required_packages
     try
