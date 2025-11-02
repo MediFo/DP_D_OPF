@@ -1,7 +1,10 @@
 using PowerModels
 using DataStructures: SortedDict
 using JuMP
-using Gurobi
+# Solver: HiGHS (FREE) - Default
+using HiGHS
+# Solver: Gurobi (COMMERCIAL) - Commented out
+# using Gurobi
 using DataFrames
 using LinearAlgebra
 using CSV
@@ -20,8 +23,9 @@ include("scripts/fun_voltage_update.jl")
 # load data
 caseID="testbeds/pglib_opf_case14_ieee.m"
 (gen,bus,line,B,refbus)=load_data(caseID)
-# initialize Gurobi environment
-gurobi_env = Gurobi.Env()
+# Note: Gurobi environment not needed with HiGHS solver
+# To use Gurobi: uncomment Gurobi import above and this line:
+# gurobi_env = Gurobi.Env()
 # solve the centralized OPF problem
 (cost_c,dispatch_c,power_flow_c)=OPF_centralized(gen,bus,line,B,refbus)
 # create and specify ADMM and model parameters
