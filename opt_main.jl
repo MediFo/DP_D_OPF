@@ -288,7 +288,7 @@ println("  ✓ E(15.5) + E(24.5) = ", round(test_result, digits=2), " (expected:
 # [4] Initialize ADMM parameters
 # ─────────────────────────────────────────────────────────────────────────────
 println("\n[5/6] Initializing ADMM parameters...")
-ν̅ = 100
+ν̅ = 1000  # Increased to allow full convergence
 ρ = 10.0  # Reduced from 50.0 to prevent oscillation
 γ = 1e-2
 

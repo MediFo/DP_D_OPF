@@ -322,10 +322,10 @@ println("  ✓ E(15.5) + E(24.5) = ", round(test_result, digits=2), " (expected:
 # [4] Initialize ADMM parameters
 # ─────────────────────────────────────────────────────────────────────────────
 println("\n[5/6] Initializing ADMM parameters...")
-ν̅ = 20  # Reduced for CKKS demo (normally 100)
+ν̅ = 100  # CKKS is ~50x slower; use 1000 for full convergence if time permits
 ρ = 10.0  # Reduced from 50.0 to prevent oscillation
 γ = 1e-2
-println("  ℹ  Using reduced iterations ($ν̅) for CKKS demo")
+println("  ⏱  Using $ν̅ iterations (may take ~50x longer than Paillier)")
 
 # Initialize with SPARSE structure (only neighbors)
 μ = zeros(Nb, Nb)  # Keep dense for simplicity in indexing
