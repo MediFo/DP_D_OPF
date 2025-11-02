@@ -36,39 +36,100 @@ class EdgeOPFSimulator:
         self.num_edge_servers = 0
         self.server_configs: Dict[int, ServerSpecs] = {}
         self.link_configs: Dict[int, LinkSpecs] = {}
+        self.device_configs: List[Dict] = []  # Loaded from JSON config
 
         # Results storage
         self.execution_results: List[Dict] = []
 
+    def load_device_configs_from_json(self, config_file: str) -> List[Dict]:
+        """
+        Load device configurations from JSON file
+
+        Args:
+            config_file: Path to JSON configuration file
+
+        Returns:
+            List of device configurations
+        """
+        config_path = Path(config_file)
+        if not config_path.exists():
+            raise FileNotFoundError(f"Configuration file not found: {config_file}")
+
+        with open(config_path, 'r') as f:
+            config_data = json.load(f)
+
+        if 'devices' not in config_data:
+            raise ValueError("Invalid configuration file: 'devices' key not found")
+
+        self.device_configs = config_data['devices']
+        print(f"Loaded {len(self.device_configs)} device configurations from {config_file}")
+        return self.device_configs
+
     def setup_edge_infrastructure(self,
                                   num_servers: int = 3,
-                                  server_specs: Optional[ServerSpecs] = None):
+                                  server_specs: Optional[ServerSpecs] = None,
+                                  config_file: Optional[str] = None):
         """
         Setup edge computing infrastructure
 
         Args:
             num_servers: Number of edge servers to create
             server_specs: Hardware specifications for servers (same for all if provided)
+            config_file: Path to JSON configuration file with device specifications
+                        If provided, reads first num_servers devices from the file
         """
         self.num_edge_servers = num_servers
 
         print(f"Setting up edge infrastructure with {num_servers} servers...")
 
+        # Load device configurations from JSON if provided
+        if config_file:
+            self.load_device_configs_from_json(config_file)
+            if len(self.device_configs) < num_servers:
+                print(f"Warning: Config file has {len(self.device_configs)} devices, but {num_servers} servers requested.")
+                print(f"Using first {min(len(self.device_configs), num_servers)} configurations.")
+
         # Create edge servers
         for i in range(num_servers):
             server_id = i + 1
-            specs = server_specs or ServerSpecs(
-                cpu_cores=4,
-                cpu_freq_ghz=2.4,
-                memory_gb=8.0,
-                storage_gb=100.0,
-                power_idle_w=50.0,
-                power_max_w=150.0
-            )
+
+            # Determine specs for this server
+            if config_file and i < len(self.device_configs):
+                # Use configuration from JSON file
+                device_config = self.device_configs[i]
+                specs_dict = device_config['specs']
+                specs = ServerSpecs(
+                    cpu_cores=specs_dict['cpu_cores'],
+                    cpu_freq_ghz=specs_dict['cpu_freq_ghz'],
+                    memory_gb=specs_dict['memory_gb'],
+                    storage_gb=specs_dict['storage_gb'],
+                    power_idle_w=specs_dict['power_idle_w'],
+                    power_max_w=specs_dict['power_max_w']
+                )
+                server_name = device_config.get('name', f"EdgeServer_{server_id}")
+                print(f"  Server {server_id}: {server_name}")
+                print(f"    - CPU: {specs.cpu_cores} cores @ {specs.cpu_freq_ghz} GHz")
+                print(f"    - Memory: {specs.memory_gb} GB")
+                print(f"    - Power: {specs.power_idle_w}W idle, {specs.power_max_w}W max")
+            elif server_specs:
+                # Use provided specs (same for all)
+                specs = server_specs
+                server_name = f"EdgeServer_{server_id}"
+            else:
+                # Use default specs
+                specs = ServerSpecs(
+                    cpu_cores=4,
+                    cpu_freq_ghz=2.4,
+                    memory_gb=8.0,
+                    storage_gb=100.0,
+                    power_idle_w=50.0,
+                    power_max_w=150.0
+                )
+                server_name = f"EdgeServer_{server_id}"
 
             server = self.simulator.add_server(
                 server_id=server_id,
-                name=f"EdgeServer_{server_id}",
+                name=server_name,
                 location=(i * 10.0, i * 10.0),  # Distributed locations
                 specs=specs
             )

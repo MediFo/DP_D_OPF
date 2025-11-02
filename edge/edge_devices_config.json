@@ -1,0 +1,134 @@
+{
+  "devices": [
+    {
+      "id": 1,
+      "name": "High-End Data Center Edge",
+      "description": "Intel Xeon server-grade edge computing node",
+      "specs": {
+        "cpu_cores": 8,
+        "cpu_freq_ghz": 3.5,
+        "memory_gb": 16.0,
+        "storage_gb": 500.0,
+        "power_idle_w": 80.0,
+        "power_max_w": 250.0
+      }
+    },
+    {
+      "id": 2,
+      "name": "Mid-Range Edge Server",
+      "description": "Standard enterprise edge server",
+      "specs": {
+        "cpu_cores": 4,
+        "cpu_freq_ghz": 2.8,
+        "memory_gb": 8.0,
+        "storage_gb": 256.0,
+        "power_idle_w": 50.0,
+        "power_max_w": 150.0
+      }
+    },
+    {
+      "id": 3,
+      "name": "Intel NUC Mini PC",
+      "description": "Compact edge computing device for small deployments",
+      "specs": {
+        "cpu_cores": 4,
+        "cpu_freq_ghz": 2.4,
+        "memory_gb": 16.0,
+        "storage_gb": 512.0,
+        "power_idle_w": 25.0,
+        "power_max_w": 65.0
+      }
+    },
+    {
+      "id": 4,
+      "name": "Industrial Edge Controller",
+      "description": "Ruggedized industrial-grade edge device",
+      "specs": {
+        "cpu_cores": 6,
+        "cpu_freq_ghz": 2.2,
+        "memory_gb": 12.0,
+        "storage_gb": 256.0,
+        "power_idle_w": 40.0,
+        "power_max_w": 120.0
+      }
+    },
+    {
+      "id": 5,
+      "name": "NVIDIA Jetson AGX Xavier",
+      "description": "AI-capable edge computing platform",
+      "specs": {
+        "cpu_cores": 8,
+        "cpu_freq_ghz": 2.26,
+        "memory_gb": 32.0,
+        "storage_gb": 256.0,
+        "power_idle_w": 10.0,
+        "power_max_w": 60.0
+      }
+    },
+    {
+      "id": 6,
+      "name": "Raspberry Pi 4 (8GB)",
+      "description": "Low-cost, low-power edge device for IoT applications",
+      "specs": {
+        "cpu_cores": 4,
+        "cpu_freq_ghz": 1.5,
+        "memory_gb": 8.0,
+        "storage_gb": 128.0,
+        "power_idle_w": 3.5,
+        "power_max_w": 15.0
+      }
+    },
+    {
+      "id": 7,
+      "name": "Low-Power IoT Gateway",
+      "description": "Ultra-low-power edge gateway for sensor networks",
+      "specs": {
+        "cpu_cores": 2,
+        "cpu_freq_ghz": 1.8,
+        "memory_gb": 4.0,
+        "storage_gb": 64.0,
+        "power_idle_w": 20.0,
+        "power_max_w": 50.0
+      }
+    },
+    {
+      "id": 8,
+      "name": "ARM-based Edge Server",
+      "description": "Energy-efficient ARM server for edge computing",
+      "specs": {
+        "cpu_cores": 16,
+        "cpu_freq_ghz": 2.0,
+        "memory_gb": 64.0,
+        "storage_gb": 1000.0,
+        "power_idle_w": 45.0,
+        "power_max_w": 180.0
+      }
+    },
+    {
+      "id": 9,
+      "name": "Embedded Industrial PC",
+      "description": "Fanless embedded PC for harsh environments",
+      "specs": {
+        "cpu_cores": 2,
+        "cpu_freq_ghz": 2.0,
+        "memory_gb": 4.0,
+        "storage_gb": 128.0,
+        "power_idle_w": 15.0,
+        "power_max_w": 45.0
+      }
+    },
+    {
+      "id": 10,
+      "name": "High-Performance Workstation Edge",
+      "description": "Desktop-class edge computing for demanding applications",
+      "specs": {
+        "cpu_cores": 12,
+        "cpu_freq_ghz": 3.8,
+        "memory_gb": 32.0,
+        "storage_gb": 1000.0,
+        "power_idle_w": 100.0,
+        "power_max_w": 300.0
+      }
+    }
+  ]
+}

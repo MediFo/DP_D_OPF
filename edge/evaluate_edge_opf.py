@@ -18,7 +18,8 @@ from visualization import ResultsExporter
 def run_distributed_evaluation(num_servers: int = 3,
                                max_iterations: int = 1000,
                                parallel: bool = True,
-                               case_id: str = "testbeds/pglib_opf_case14_ieee.m"):
+                               case_id: str = "testbeds/pglib_opf_case14_ieee.m",
+                               config_file: str = None):
     """
     Run distributed OPF evaluation on edge devices
 
@@ -27,6 +28,7 @@ def run_distributed_evaluation(num_servers: int = 3,
         max_iterations: Maximum ADMM iterations
         parallel: Execute nodes in parallel
         case_id: Power system test case
+        config_file: JSON configuration file for hardware specifications
     """
     print("\n" + "="*80)
     print("DISTRIBUTED OPF EVALUATION ON EDGE DEVICES")
@@ -36,15 +38,20 @@ def run_distributed_evaluation(num_servers: int = 3,
     sim = EdgeOPFSimulator(f"Distributed_OPF_{num_servers}_Servers")
 
     # Setup edge infrastructure
-    server_specs = ServerSpecs(
-        cpu_cores=4,
-        cpu_freq_ghz=2.4,
-        memory_gb=8.0,
-        storage_gb=100.0,
-        power_idle_w=50.0,
-        power_max_w=150.0
-    )
-    sim.setup_edge_infrastructure(num_servers=num_servers, server_specs=server_specs)
+    if config_file:
+        # Use custom hardware configs from JSON
+        sim.setup_edge_infrastructure(num_servers=num_servers, config_file=config_file)
+    else:
+        # Use default specs for all servers
+        server_specs = ServerSpecs(
+            cpu_cores=4,
+            cpu_freq_ghz=2.4,
+            memory_gb=8.0,
+            storage_gb=100.0,
+            power_idle_w=50.0,
+            power_max_w=150.0
+        )
+        sim.setup_edge_infrastructure(num_servers=num_servers, server_specs=server_specs)
 
     # Configure Julia OPF
     julia_config = JuliaConfig(
@@ -108,12 +115,14 @@ def run_distributed_evaluation(num_servers: int = 3,
     return results
 
 
-def run_centralized_evaluation(case_id: str = "testbeds/pglib_opf_case14_ieee.m"):
+def run_centralized_evaluation(case_id: str = "testbeds/pglib_opf_case14_ieee.m",
+                               config_file: str = None):
     """
     Run centralized OPF evaluation on a single edge device
 
     Args:
         case_id: Power system test case
+        config_file: JSON configuration file for hardware specifications (uses first device)
     """
     print("\n" + "="*80)
     print("CENTRALIZED OPF EVALUATION ON EDGE DEVICE")
@@ -123,15 +132,20 @@ def run_centralized_evaluation(case_id: str = "testbeds/pglib_opf_case14_ieee.m"
     sim = EdgeOPFSimulator("Centralized_OPF")
 
     # Setup single edge server
-    server_specs = ServerSpecs(
-        cpu_cores=4,
-        cpu_freq_ghz=2.4,
-        memory_gb=8.0,
-        storage_gb=100.0,
-        power_idle_w=50.0,
-        power_max_w=150.0
-    )
-    sim.setup_edge_infrastructure(num_servers=1, server_specs=server_specs)
+    if config_file:
+        # Use first device from config file
+        sim.setup_edge_infrastructure(num_servers=1, config_file=config_file)
+    else:
+        # Use default specs
+        server_specs = ServerSpecs(
+            cpu_cores=4,
+            cpu_freq_ghz=2.4,
+            memory_gb=8.0,
+            storage_gb=100.0,
+            power_idle_w=50.0,
+            power_max_w=150.0
+        )
+        sim.setup_edge_infrastructure(num_servers=1, server_specs=server_specs)
 
     # Run centralized OPF
     config = {"caseID": case_id}
@@ -184,7 +198,8 @@ def run_centralized_evaluation(case_id: str = "testbeds/pglib_opf_case14_ieee.m"
 
 def run_comparison_evaluation(num_servers: int = 3,
                               max_iterations: int = 1000,
-                              case_id: str = "testbeds/pglib_opf_case14_ieee.m"):
+                              case_id: str = "testbeds/pglib_opf_case14_ieee.m",
+                              config_file: str = None):
     """
     Run both distributed and centralized evaluations for comparison
 
@@ -192,6 +207,7 @@ def run_comparison_evaluation(num_servers: int = 3,
         num_servers: Number of edge servers for distributed
         max_iterations: Maximum ADMM iterations
         case_id: Power system test case
+        config_file: JSON configuration file for hardware specifications
     """
     print("\n" + "="*80)
     print("COMPARATIVE EVALUATION: DISTRIBUTED vs CENTRALIZED OPF")
@@ -199,7 +215,7 @@ def run_comparison_evaluation(num_servers: int = 3,
 
     # Run centralized
     print("\n>>> Phase 1: Centralized OPF")
-    centralized_results = run_centralized_evaluation(case_id)
+    centralized_results = run_centralized_evaluation(case_id, config_file)
 
     # Run distributed
     print("\n>>> Phase 2: Distributed OPF")
@@ -207,7 +223,8 @@ def run_comparison_evaluation(num_servers: int = 3,
         num_servers=num_servers,
         max_iterations=max_iterations,
         parallel=True,
-        case_id=case_id
+        case_id=case_id,
+        config_file=config_file
     )
 
     # Create comparison summary
@@ -288,8 +305,22 @@ def main():
         action='store_true',
         help='Run distributed nodes sequentially instead of parallel'
     )
+    parser.add_argument(
+        '--config',
+        type=str,
+        default=None,
+        help='JSON configuration file with hardware specifications for edge devices (default: edge/edge_devices_config.json if not specified)'
+    )
 
     args = parser.parse_args()
+
+    # Use default config file if none specified
+    config_file = args.config
+    if config_file is None:
+        default_config = Path(__file__).parent / "edge_devices_config.json"
+        if default_config.exists():
+            config_file = str(default_config)
+            print(f"Using default configuration file: {config_file}")
 
     print("\n" + "="*80)
     print("EDGE OPF EVALUATION TOOL")
@@ -297,6 +328,8 @@ def main():
     print("="*80)
     print(f"Mode: {args.mode}")
     print(f"Test case: {args.case}")
+    if config_file:
+        print(f"Hardware config: {config_file}")
     if args.mode in ['distributed', 'comparison']:
         print(f"Edge servers: {args.servers}")
         print(f"Max iterations: {args.iterations}")
@@ -309,15 +342,17 @@ def main():
                 num_servers=args.servers,
                 max_iterations=args.iterations,
                 parallel=not args.sequential,
-                case_id=args.case
+                case_id=args.case,
+                config_file=config_file
             )
         elif args.mode == 'centralized':
-            run_centralized_evaluation(case_id=args.case)
+            run_centralized_evaluation(case_id=args.case, config_file=config_file)
         elif args.mode == 'comparison':
             run_comparison_evaluation(
                 num_servers=args.servers,
                 max_iterations=args.iterations,
-                case_id=args.case
+                case_id=args.case,
+                config_file=config_file
             )
 
         print("\n✓ Evaluation completed successfully!")
