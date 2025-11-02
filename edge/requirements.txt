@@ -3,7 +3,7 @@
 
 # Core dependencies
 psutil>=5.9.0          # Process and system monitoring
-numpy>=1.21.0          # Numerical computing
+numpy>=1.21.0,<2.0     # Numerical computing (NumPy 1.x for matplotlib compatibility)
 matplotlib>=3.5.0      # Plotting and visualization
 
 # Optional but recommended

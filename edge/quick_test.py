@@ -17,12 +17,29 @@ print("Step 1: Checking Python dependencies...")
 try:
     import psutil
     import numpy
+    print(f"✓ psutil found (version {psutil.__version__})")
+    print(f"✓ numpy found (version {numpy.__version__})")
+
+    # Check NumPy version
+    numpy_version = tuple(map(int, numpy.__version__.split('.')[:2]))
+    if numpy_version >= (2, 0):
+        print("  ⚠ WARNING: NumPy 2.x detected. This may cause matplotlib issues.")
+        print("  Recommended: pip install \"numpy<2\"")
+
     import matplotlib
+    print(f"✓ matplotlib found (version {matplotlib.__version__})")
     print("✓ All Python dependencies found")
 except ImportError as e:
     print(f"✗ Missing dependency: {e}")
     print("\nPlease install dependencies:")
     print("  pip install -r requirements.txt")
+    print("\nOr individually:")
+    print("  pip install psutil \"numpy<2\" matplotlib")
+    sys.exit(1)
+except Exception as e:
+    print(f"✗ Error checking dependencies: {e}")
+    print("\nIf you see NumPy/matplotlib compatibility issues:")
+    print("  pip install \"numpy<2\"")
     sys.exit(1)
 
 print()
