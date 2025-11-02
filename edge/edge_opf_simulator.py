@@ -37,6 +37,8 @@ class EdgeOPFSimulator:
         self.server_configs: Dict[int, ServerSpecs] = {}
         self.link_configs: Dict[int, LinkSpecs] = {}
         self.device_configs: List[Dict] = []  # Loaded from JSON config
+        self.network_profiles: Dict[str, Dict] = {}  # Network link profiles
+        self.device_performance: Dict[int, Dict] = {}  # Performance characteristics per device
 
         # Results storage
         self.execution_results: List[Dict] = []
@@ -62,8 +64,125 @@ class EdgeOPFSimulator:
             raise ValueError("Invalid configuration file: 'devices' key not found")
 
         self.device_configs = config_data['devices']
+        self.network_profiles = config_data.get('network_profiles', {})
+
         print(f"Loaded {len(self.device_configs)} device configurations from {config_file}")
+        if self.network_profiles:
+            print(f"Loaded {len(self.network_profiles)} network profiles")
+
         return self.device_configs
+
+    def _get_network_link_specs(self, device1: Dict, device2: Dict) -> LinkSpecs:
+        """
+        Determine network link specifications based on device network types
+        Uses the worse network type between two devices
+
+        Args:
+            device1: First device configuration
+            device2: Second device configuration
+
+        Returns:
+            LinkSpecs for the connection
+        """
+        import random
+
+        net_type1 = device1.get('network_type', 'ethernet_fast')
+        net_type2 = device2.get('network_type', 'ethernet_fast')
+
+        # Network type priority (lower is better)
+        priority = {
+            'fiber': 1,
+            'ethernet_gigabit': 2,
+            'ethernet_fast': 3,
+            'wifi_ac': 4,
+            'wifi_n': 5,
+            'lte': 6,
+            'low_bandwidth': 7
+        }
+
+        # Use the worse network type (bottleneck)
+        if priority.get(net_type1, 3) > priority.get(net_type2, 3):
+            net_type = net_type1
+        else:
+            net_type = net_type2
+
+        # Get base specs from network profile
+        if net_type in self.network_profiles:
+            profile = self.network_profiles[net_type]
+            # Add random variation (+/- 10%)
+            variation = random.uniform(0.9, 1.1)
+            bandwidth = profile['bandwidth_mbps'] * variation
+            latency = profile['latency_ms'] * variation
+            packet_loss = profile['packet_loss_rate'] * variation
+        else:
+            # Default specs
+            bandwidth = 100.0
+            latency = 10.0
+            packet_loss = 0.001
+
+        return LinkSpecs(
+            bandwidth_mbps=bandwidth,
+            latency_ms=latency,
+            packet_loss_rate=packet_loss
+        )
+
+    def _scale_resource_utilization(self, node_id: int, stats: Dict) -> Dict:
+        """
+        Scale resource utilization based on device performance characteristics
+        Lower compute efficiency = higher CPU usage for same workload
+        Lower memory efficiency = higher memory usage
+
+        Args:
+            node_id: Node identifier
+            stats: Raw resource monitoring statistics
+
+        Returns:
+            Scaled resource statistics
+        """
+        import random
+
+        if node_id not in self.device_performance:
+            return stats
+
+        perf = self.device_performance[node_id]
+
+        # Scale CPU usage inversely with compute efficiency
+        # Lower efficiency means higher utilization for same workload
+        compute_eff = perf.get('compute_efficiency', 1.0)
+        cpu_scale = 1.0 / compute_eff if compute_eff > 0 else 1.0
+
+        # Scale memory usage inversely with memory efficiency
+        memory_eff = perf.get('memory_efficiency', 1.0)
+        mem_scale = 1.0 / memory_eff if memory_eff > 0 else 1.0
+
+        # Add random variation (±5%) for realism
+        cpu_variation = random.uniform(0.95, 1.05)
+        mem_variation = random.uniform(0.95, 1.05)
+
+        # Scale workload-dependent resources
+        workload_factor = perf.get('workload_capacity', 1.0)
+
+        scaled_stats = stats.copy()
+
+        # Scale CPU metrics
+        if 'avg_cpu_percent' in stats:
+            scaled_stats['avg_cpu_percent'] = min(100.0, stats['avg_cpu_percent'] * cpu_scale * cpu_variation)
+        if 'max_cpu_percent' in stats:
+            scaled_stats['max_cpu_percent'] = min(100.0, stats['max_cpu_percent'] * cpu_scale * cpu_variation)
+
+        # Scale memory metrics
+        if 'avg_memory_mb' in stats:
+            scaled_stats['avg_memory_mb'] = stats['avg_memory_mb'] * mem_scale * mem_variation
+        if 'max_memory_mb' in stats:
+            scaled_stats['max_memory_mb'] = stats['max_memory_mb'] * mem_scale * mem_variation
+
+        # Scale network transfer based on workload (more capable devices handle more data)
+        if 'network_sent_mb' in stats:
+            scaled_stats['network_sent_mb'] = stats['network_sent_mb'] * workload_factor
+        if 'network_recv_mb' in stats:
+            scaled_stats['network_recv_mb'] = stats['network_recv_mb'] * workload_factor
+
+        return scaled_stats
 
     def setup_edge_infrastructure(self,
                                   num_servers: int = 3,
@@ -92,6 +211,7 @@ class EdgeOPFSimulator:
         # Create edge servers
         for i in range(num_servers):
             server_id = i + 1
+            device_config = None
 
             # Determine specs for this server
             if config_file and i < len(self.device_configs):
@@ -107,14 +227,32 @@ class EdgeOPFSimulator:
                     power_max_w=specs_dict['power_max_w']
                 )
                 server_name = device_config.get('name', f"EdgeServer_{server_id}")
+
+                # Store performance characteristics
+                self.device_performance[server_id] = device_config.get('performance', {
+                    'compute_efficiency': 1.0,
+                    'memory_efficiency': 1.0,
+                    'workload_capacity': 1.0,
+                    'reliability': 0.95
+                })
+
                 print(f"  Server {server_id}: {server_name}")
+                print(f"    - Tier: {device_config.get('tier', 'standard')}")
+                print(f"    - Network: {device_config.get('network_type', 'ethernet_fast')}")
                 print(f"    - CPU: {specs.cpu_cores} cores @ {specs.cpu_freq_ghz} GHz")
                 print(f"    - Memory: {specs.memory_gb} GB")
                 print(f"    - Power: {specs.power_idle_w}W idle, {specs.power_max_w}W max")
+                print(f"    - Compute Efficiency: {self.device_performance[server_id]['compute_efficiency']:.2f}x")
             elif server_specs:
                 # Use provided specs (same for all)
                 specs = server_specs
                 server_name = f"EdgeServer_{server_id}"
+                self.device_performance[server_id] = {
+                    'compute_efficiency': 1.0,
+                    'memory_efficiency': 1.0,
+                    'workload_capacity': 1.0,
+                    'reliability': 0.95
+                }
             else:
                 # Use default specs
                 specs = ServerSpecs(
@@ -126,6 +264,12 @@ class EdgeOPFSimulator:
                     power_max_w=150.0
                 )
                 server_name = f"EdgeServer_{server_id}"
+                self.device_performance[server_id] = {
+                    'compute_efficiency': 1.0,
+                    'memory_efficiency': 1.0,
+                    'workload_capacity': 1.0,
+                    'reliability': 0.95
+                }
 
             server = self.simulator.add_server(
                 server_id=server_id,
@@ -138,27 +282,35 @@ class EdgeOPFSimulator:
 
         # Create network links between servers (full mesh for ADMM)
         link_id = 1
+        print("\n  Creating network links:")
         for i in range(num_servers):
             for j in range(i + 1, num_servers):
                 source_id = i + 1
                 target_id = j + 1
 
-                # Bidirectional links
-                specs = LinkSpecs(
-                    bandwidth_mbps=100.0,
-                    latency_ms=10.0,
-                    packet_loss_rate=0.001
-                )
+                # Determine link specs based on device network types
+                if config_file and i < len(self.device_configs) and j < len(self.device_configs):
+                    device1 = self.device_configs[i]
+                    device2 = self.device_configs[j]
+                    link_specs = self._get_network_link_specs(device1, device2)
+                    print(f"    Link {source_id}↔{target_id}: {link_specs.bandwidth_mbps:.0f} Mbps, {link_specs.latency_ms:.1f}ms latency")
+                else:
+                    # Default specs
+                    link_specs = LinkSpecs(
+                        bandwidth_mbps=100.0,
+                        latency_ms=10.0,
+                        packet_loss_rate=0.001
+                    )
 
                 # Source -> Target
-                self.simulator.add_link(link_id, source_id, target_id, specs)
+                self.simulator.add_link(link_id, source_id, target_id, link_specs)
                 link_id += 1
 
-                # Target -> Source
-                self.simulator.add_link(link_id, target_id, source_id, specs)
+                # Target -> Source (symmetric link with same specs)
+                self.simulator.add_link(link_id, target_id, source_id, link_specs)
                 link_id += 1
 
-        print(f"Created {num_servers} edge servers and {link_id - 1} network links")
+        print(f"\n✓ Created {num_servers} edge servers and {link_id - 1} network links")
 
     def run_distributed_opf(self,
                            julia_config: Optional[JuliaConfig] = None,
@@ -235,20 +387,25 @@ class EdgeOPFSimulator:
                             service.fail(result.get('error', 'Unknown error'))
                             print(f"✗ Node {node_id} failed")
 
-                        # Update server resources
+                        # Update server resources with scaling
                         if 'resource_monitoring' in result:
-                            stats = result['resource_monitoring']
+                            raw_stats = result['resource_monitoring']
+                            scaled_stats = self._scale_resource_utilization(node_id, raw_stats)
+
                             self.simulator.update_server_resources(
                                 node_id,
-                                stats.get('avg_cpu_percent', 0),
-                                stats.get('avg_memory_mb', 0)
+                                scaled_stats.get('avg_cpu_percent', 0),
+                                scaled_stats.get('avg_memory_mb', 0)
                             )
 
-                            # Record service resource usage
+                            # Record service resource usage with scaled values
                             service.record_resource_usage(
-                                stats.get('avg_cpu_percent', 0),
-                                stats.get('avg_memory_mb', 0)
+                                scaled_stats.get('avg_cpu_percent', 0),
+                                scaled_stats.get('avg_memory_mb', 0)
                             )
+
+                            # Store scaled stats back in result for reporting
+                            result['resource_monitoring_scaled'] = scaled_stats
 
                     except Exception as e:
                         print(f"✗ Node {node_id} failed with exception: {e}")
@@ -272,18 +429,23 @@ class EdgeOPFSimulator:
                         service.fail(result.get('error', 'Unknown error'))
                         print(f"✗ Node {node_id} failed")
 
-                    # Update resources
+                    # Update resources with scaling
                     if 'resource_monitoring' in result:
-                        stats = result['resource_monitoring']
+                        raw_stats = result['resource_monitoring']
+                        scaled_stats = self._scale_resource_utilization(node_id, raw_stats)
+
                         self.simulator.update_server_resources(
                             node_id,
-                            stats.get('avg_cpu_percent', 0),
-                            stats.get('avg_memory_mb', 0)
+                            scaled_stats.get('avg_cpu_percent', 0),
+                            scaled_stats.get('avg_memory_mb', 0)
                         )
                         service.record_resource_usage(
-                            stats.get('avg_cpu_percent', 0),
-                            stats.get('avg_memory_mb', 0)
+                            scaled_stats.get('avg_cpu_percent', 0),
+                            scaled_stats.get('avg_memory_mb', 0)
                         )
+
+                        # Store scaled stats back in result for reporting
+                        result['resource_monitoring_scaled'] = scaled_stats
 
                 except Exception as e:
                     print(f"✗ Node {node_id} failed with exception: {e}")
@@ -387,30 +549,54 @@ class EdgeOPFSimulator:
 
     def _simulate_network_communication(self, services: List[EdgeService]):
         """
-        Simulate network communication overhead for ADMM
+        Simulate network communication overhead for ADMM with variability
 
         Args:
             services: List of services representing OPF nodes
         """
-        # Estimate data transfer for ADMM consensus
-        # Each node exchanges dual variables with neighbors
-        data_per_exchange_mb = 0.01  # 10KB per exchange (small messages)
+        import random
+
+        # Base data transfer for ADMM consensus
+        base_data_per_exchange_mb = 0.01  # 10KB per exchange (small messages)
         num_exchanges = 100  # Typical number of ADMM iterations
 
         for i, service_i in enumerate(services):
+            node_i = service_i.node_id
+
+            # Get workload capacity for this node (affects data volume)
+            perf_i = self.device_performance.get(node_i, {})
+            workload_i = perf_i.get('workload_capacity', 1.0)
+
             for j, service_j in enumerate(services):
                 if i != j:
+                    node_j = service_j.node_id
+
+                    # Get workload capacity for target node
+                    perf_j = self.device_performance.get(node_j, {})
+                    workload_j = perf_j.get('workload_capacity', 1.0)
+
+                    # Data volume varies based on workload capacity
+                    # Higher capacity devices process and send more data
+                    workload_factor = (workload_i + workload_j) / 2.0
+
+                    # Add random variation (±15%) for realistic network traffic
+                    variation = random.uniform(0.85, 1.15)
+
+                    # Calculate actual data transfer
+                    data_sent = base_data_per_exchange_mb * num_exchanges * workload_factor * variation
+                    data_recv = base_data_per_exchange_mb * num_exchanges * workload_factor * variation
+
                     # Simulate data transfer
                     service_i.record_network_transfer(
-                        sent_mb=data_per_exchange_mb * num_exchanges,
-                        recv_mb=data_per_exchange_mb * num_exchanges
+                        sent_mb=data_sent,
+                        recv_mb=data_recv
                     )
 
                     # Record in network links
                     self.simulator.record_network_transfer(
-                        service_i.node_id,
-                        service_j.node_id,
-                        data_per_exchange_mb * num_exchanges
+                        node_i,
+                        node_j,
+                        data_sent
                     )
 
 
