@@ -119,8 +119,18 @@ function update_θ̅_sparse(bus, θ_sparse)
     θ̅ = zeros(Nb)
 
     for i in 1:Nb
-        # Average over actual neighbors only
-        θ̅[i] = sum(θ_sparse[(j,i)] for j in bus[i].N if haskey(θ_sparse, (j,i))) / length(bus[i].N)
+        # Collect values from neighbors that have this bus as neighbor
+        neighbor_values = Float64[]
+        for j in bus[i].N
+            if haskey(θ_sparse, (j,i))
+                push!(neighbor_values, θ_sparse[(j,i)])
+            end
+        end
+
+        # Average over actual values (not total neighbor count!)
+        if !isempty(neighbor_values)
+            θ̅[i] = sum(neighbor_values) / length(neighbor_values)
+        end
     end
 
     return θ̅
@@ -279,7 +289,7 @@ println("  ✓ E(15.5) + E(24.5) = ", round(test_result, digits=2), " (expected:
 # ─────────────────────────────────────────────────────────────────────────────
 println("\n[5/6] Initializing ADMM parameters...")
 ν̅ = 100
-ρ = 50.0
+ρ = 10.0  # Reduced from 50.0 to prevent oscillation
 γ = 1e-2
 
 # Initialize with SPARSE structure (only neighbors)
