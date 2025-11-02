@@ -13,9 +13,15 @@ using CSV
 using JSON
 using Dates
 
-# Load scripts from parent directory
-include("../../scripts/data_manager.jl")
-include("../../scripts/fun_centralized_OPF.jl")
+# Get the directory where this script is located
+script_dir = @__DIR__
+# Navigate to project root (2 levels up from edge/scripts/)
+project_root = abspath(joinpath(script_dir, "..", ".."))
+scripts_dir = joinpath(project_root, "scripts")
+
+# Load scripts from project root - using absolute paths for cross-platform compatibility
+include(joinpath(scripts_dir, "data_manager.jl"))
+include(joinpath(scripts_dir, "fun_centralized_OPF.jl"))
 
 """
 Run centralized OPF computation
@@ -26,8 +32,17 @@ function run_centralized_opf(config::Dict)
     println("Configuration: ", config)
     println("="^60)
 
-    # Load data
-    caseID = get(config, "caseID", "../../testbeds/pglib_opf_case14_ieee.m")
+    # Load data - convert path to absolute if relative
+    caseID = get(config, "caseID", joinpath(project_root, "testbeds", "pglib_opf_case14_ieee.m"))
+    if !isabs(caseID)
+        caseID = joinpath(project_root, caseID)
+    end
+
+    println("Loading case: $caseID")
+    if !isfile(caseID)
+        error("Case file not found: $caseID")
+    end
+
     (gen, bus, line, B, refbus) = load_data(caseID)
 
     # Initialize Gurobi environment
@@ -66,14 +81,27 @@ end
 Main entry point
 """
 function main()
+    println("Julia working directory: $(pwd())")
+    println("Script directory: $script_dir")
+    println("Project root: $project_root")
+
     # Parse command line arguments
     if length(ARGS) > 0
         config_file = ARGS[1]
+        if !isabs(config_file)
+            config_file = abspath(config_file)
+        end
+        println("Loading config from: $config_file")
+
+        if !isfile(config_file)
+            error("Config file not found: $config_file")
+        end
+
         config = JSON.parsefile(config_file)
     else
         # Default configuration
         config = Dict(
-            "caseID" => "../../testbeds/pglib_opf_case14_ieee.m"
+            "caseID" => joinpath(project_root, "testbeds", "pglib_opf_case14_ieee.m")
         )
     end
 
@@ -81,7 +109,7 @@ function main()
     results = run_centralized_opf(config)
 
     # Save results
-    output_dir = "../../edge/results"
+    output_dir = joinpath(project_root, "edge", "results")
     if !isdir(output_dir)
         mkpath(output_dir)
     end
