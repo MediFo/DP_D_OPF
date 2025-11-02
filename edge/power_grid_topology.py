@@ -18,11 +18,49 @@ def parse_matpower_case(case_file: str) -> List[Tuple[int, int]]:
     Returns:
         List of (bus_from, bus_to) tuples representing connected buses
     """
+    # Try multiple path resolution strategies
     case_path = Path(case_file)
-    if not case_path.exists():
-        raise FileNotFoundError(f"Case file not found: {case_file}")
 
-    with open(case_path, 'r') as f:
+    # Strategy 1: Use path as-is
+    if case_path.exists():
+        resolved_path = case_path
+    else:
+        # Strategy 2: Resolve relative to current script's parent directory (project root)
+        script_dir = Path(__file__).parent  # edge/
+        project_root = script_dir.parent     # DP_D_OPF/
+
+        # Try relative to project root
+        alt_path = project_root / case_file
+        if alt_path.exists():
+            resolved_path = alt_path
+        else:
+            # Strategy 3: Try removing leading directory if path starts with 'testbeds/'
+            if case_file.startswith('testbeds/'):
+                alt_path2 = project_root / case_file
+                if alt_path2.exists():
+                    resolved_path = alt_path2
+                else:
+                    # Last attempt: maybe we're already in project root
+                    alt_path3 = Path.cwd() / case_file
+                    if alt_path3.exists():
+                        resolved_path = alt_path3
+                    else:
+                        raise FileNotFoundError(
+                            f"Case file not found: {case_file}\n"
+                            f"  Tried:\n"
+                            f"    - {case_path.absolute()}\n"
+                            f"    - {alt_path.absolute()}\n"
+                            f"    - {alt_path3.absolute()}"
+                        )
+            else:
+                raise FileNotFoundError(
+                    f"Case file not found: {case_file}\n"
+                    f"  Tried:\n"
+                    f"    - {case_path.absolute()}\n"
+                    f"    - {alt_path.absolute()}"
+                )
+
+    with open(resolved_path, 'r') as f:
         content = f.read()
 
     # Find the mpc.branch section
