@@ -1811,19 +1811,15 @@ class ResultsExporter:
         axes[1, 0].legend()
         axes[1, 0].grid(True, alpha=0.3, axis='y')
 
-        # Average packet size
-        packets = [d['avg_packet'] for d in link_data if d['avg_packet'] > 0]
-        if packets:
-            axes[1, 1].hist(packets, bins=20, color='mediumpurple', edgecolor='black', alpha=0.7)
-            axes[1, 1].axvline(np.mean(packets), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(packets):.3f} MB')
-            axes[1, 1].set_xlabel('Avg Packet Size (MB)', fontsize=12)
-            axes[1, 1].set_ylabel('Number of Links', fontsize=12)
-            axes[1, 1].set_title(f'Packet Size Distribution ({len(packets)} links)', fontsize=13)
-            axes[1, 1].legend()
-            axes[1, 1].grid(True, alpha=0.3, axis='y')
-        else:
-            axes[1, 1].text(0.5, 0.5, 'No packet data', ha='center', va='center', fontsize=14)
-            axes[1, 1].set_title('Packet Size (No Data)')
+        # Average packet size (all links including zeros)
+        packets = [d['avg_packet'] for d in link_data]
+        axes[1, 1].hist(packets, bins=20, color='mediumpurple', edgecolor='black', alpha=0.7)
+        axes[1, 1].axvline(np.mean(packets), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(packets):.3f} MB')
+        axes[1, 1].set_xlabel('Avg Packet Size (MB)', fontsize=12)
+        axes[1, 1].set_ylabel('Number of Links', fontsize=12)
+        axes[1, 1].set_title(f'Packet Size Distribution ({len(packets)} links)', fontsize=13)
+        axes[1, 1].legend()
+        axes[1, 1].grid(True, alpha=0.3, axis='y')
 
         plt.tight_layout()
         filepath = self.plots_dir / filename
