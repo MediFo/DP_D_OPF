@@ -4,36 +4,15 @@
 
 This document explains the edge device configuration system used for simulating heterogeneous edge computing environments for distributed Optimal Power Flow (OPF) evaluation.
 
-The configuration is stored in `edge_devices_config.json` and defines **40 diverse edge devices** organized into **7 device types** with varied network characteristics.
+The configuration is stored in `edge_devices_config.json` and defines **36 diverse edge devices** organized into **6 device types** with varied network characteristics.
 
 ---
 
 ## Device Type Categories
 
-The 40 devices are organized into 7 categories, with **emphasis on medium and small devices** (32 out of 40 devices):
+The 36 devices are organized into 6 categories, with **100% focus on medium and small devices**:
 
-### 1. **Data Center Edge** (4 devices - 10%)
-**Tier:** Premium
-**Network:** Fiber, Gigabit Ethernet
-**Use Cases:** Distributed computing, Edge analytics, Data aggregation
-
-**Characteristics:**
-- High compute capacity (8-16 cores)
-- Large memory (32-96 GB)
-- High power consumption (180-280W max)
-- Best network connectivity (fiber/gigabit)
-- Compute efficiency: 1.15x - 1.28x
-- Reliability: 0.96 - 0.99
-
-**Example Devices:**
-- Supermicro E300-9D: 12 cores @ 2.8GHz, 64GB RAM
-- Dell PowerEdge XR2: 16 cores @ 3.0GHz, 96GB RAM
-- Lenovo ThinkSystem SE350: 12 cores @ 2.6GHz, 64GB RAM
-- HPE Edgeline EL300: 8 cores @ 2.6GHz, 32GB RAM
-
----
-
-### 2. **Industrial Controllers** (7 devices - 17.5%)
+### 1. **Industrial Controllers** (7 devices - 19.4%)
 **Tier:** Standard (Medium)
 **Network:** Fast Ethernet, Gigabit Ethernet
 **Use Cases:** Factory automation, SCADA systems, Process control
@@ -55,7 +34,7 @@ The 40 devices are organized into 7 categories, with **emphasis on medium and sm
 
 ---
 
-### 3. **Enterprise Servers** (7 devices - 17.5%)
+### 2. **Enterprise Servers** (7 devices - 19.4%)
 **Tier:** Standard (Medium)
 **Network:** Gigabit Ethernet
 **Use Cases:** Branch office computing, Local data processing, Business applications
@@ -77,7 +56,7 @@ The 40 devices are organized into 7 categories, with **emphasis on medium and sm
 
 ---
 
-### 4. **AI/ML Platforms** (5 devices - 12.5%)
+### 3. **AI/ML Platforms** (5 devices - 13.9%)
 **Tier:** Standard/Basic (Mixed)
 **Network:** Gigabit Ethernet, WiFi AC
 **Use Cases:** Computer vision, Real-time inference, Edge AI analytics
@@ -99,7 +78,7 @@ The 40 devices are organized into 7 categories, with **emphasis on medium and sm
 
 ---
 
-### 5. **IoT Gateways** (8 devices - 20%)
+### 4. **IoT Gateways** (8 devices - 22.2%)
 **Tier:** Basic (Small)
 **Network:** Ethernet Fast, WiFi N, LTE
 **Use Cases:** Sensor data aggregation, Protocol translation, IoT management
@@ -122,7 +101,7 @@ The 40 devices are organized into 7 categories, with **emphasis on medium and sm
 
 ---
 
-### 6. **Wireless Edge** (5 devices - 12.5%)
+### 5. **Wireless Edge** (5 devices - 13.9%)
 **Tier:** Basic (Small)
 **Network:** WiFi AC, WiFi N
 **Use Cases:** Mobile edge computing, Temporary deployments, Wireless sensors
@@ -144,7 +123,7 @@ The 40 devices are organized into 7 categories, with **emphasis on medium and sm
 
 ---
 
-### 7. **Embedded/Development Platforms** (4 devices - 10%)
+### 6. **Embedded/Development Platforms** (4 devices - 11.1%)
 **Tier:** Basic (Small)
 **Network:** WiFi AC, WiFi N
 **Use Cases:** Prototyping, Education, Hobby projects, Edge experimentation
@@ -169,11 +148,10 @@ The 40 devices are organized into 7 categories, with **emphasis on medium and sm
 
 | Tier | Count | Percentage | Description |
 |------|-------|------------|-------------|
-| **Premium** | 4 | 10% | High-end data center servers |
-| **Standard** | 16 | 40% | Medium enterprise/industrial devices |
-| **Basic** | 20 | 50% | Small IoT/embedded/wireless devices |
+| **Standard** | 16 | 44.4% | Medium enterprise/industrial devices |
+| **Basic** | 20 | 55.6% | Small IoT/embedded/wireless devices |
 
-**Total:** 40 devices with **emphasis on medium (40%) and small (50%) devices**
+**Total:** 36 devices with **100% focus on medium (44.4%) and small (55.6%) devices**
 
 ---
 
@@ -195,12 +173,11 @@ The system supports 7 network types with varying characteristics:
 
 | Network Type | Device Count | Usage |
 |--------------|--------------|-------|
-| **ethernet_gigabit** | 14 devices | Enterprise, industrial premium |
+| **ethernet_gigabit** | 12 devices | Enterprise, industrial |
 | **ethernet_fast** | 10 devices | Industrial, IoT gateways |
-| **wifi_ac** | 9 devices | Wireless edge, dev platforms |
-| **wifi_n** | 6 devices | Low-cost wireless devices |
-| **lte** | 3 devices | Mobile/field deployments |
-| **fiber** | 2 devices | Data center edge only |
+| **wifi_ac** | 8 devices | Wireless edge, dev platforms |
+| **wifi_n** | 4 devices | Low-cost wireless devices |
+| **lte** | 2 devices | Mobile/field deployments |
 
 ---
 
@@ -226,10 +203,10 @@ Each device has 4 performance metrics that affect simulation behavior:
 - **Example:** Device with 0.5x handles **half** the data traffic
 - **Example:** Device with 1.8x handles **80% more** data traffic
 
-### 4. **Reliability** (0.79 - 0.99)
+### 4. **Reliability** (0.79 - 0.97)
 - Device dependability rating
 - Affects simulation outcomes
-- Data center devices: 0.96-0.99 (very high)
+- Enterprise/Industrial devices: 0.90-0.97 (high)
 - IoT/Embedded devices: 0.79-0.92 (moderate to high)
 
 ---
@@ -238,13 +215,13 @@ Each device has 4 performance metrics that affect simulation behavior:
 
 | Metric | Minimum | Maximum | Range |
 |--------|---------|---------|-------|
-| **CPU Cores** | 1 | 16 | 16x |
+| **CPU Cores** | 1 | 8 | 8x |
 | **CPU Frequency** | 1.2 GHz | 3.2 GHz | 2.7x |
-| **Memory** | 2 GB | 96 GB | 48x |
-| **Storage** | 16 GB | 1500 GB | 94x |
-| **Max Power** | 8W | 280W | 35x |
-| **Compute Efficiency** | 0.50x | 1.28x | 2.56x |
-| **Workload Capacity** | 0.35x | 1.8x | 5.1x |
+| **Memory** | 2 GB | 32 GB | 16x |
+| **Storage** | 16 GB | 512 GB | 32x |
+| **Max Power** | 8W | 250W | 31x |
+| **Compute Efficiency** | 0.50x | 1.18x | 2.36x |
+| **Workload Capacity** | 0.35x | 1.3x | 3.7x |
 
 ---
 
@@ -271,19 +248,19 @@ Reduction: 81% fewer network links!
 
 ```
 Bus 1 ↔ Bus 2:
-  Device 1: fiber (1000 Mbps)
-  Device 2: ethernet_gigabit (1000 Mbps)
-  → Link: 1000 Mbps (both high-speed)
+  Device 1: ethernet_fast (100 Mbps)
+  Device 2: ethernet_fast (100 Mbps)
+  → Link: ~98 Mbps (variation applied)
 
 Bus 4 ↔ Bus 7:
   Device 4: ethernet_fast (100 Mbps)
-  Device 7: wifi_n (100 Mbps)
-  → Link: ~95 Mbps (bottleneck + variation)
+  Device 7: ethernet_gigabit (1000 Mbps)
+  → Link: ~95 Mbps (ethernet_fast bottleneck)
 
 Bus 10 ↔ Bus 20:
   Device 10: ethernet_gigabit (1000 Mbps)
-  Device 20: lte (50 Mbps)
-  → Link: ~50 Mbps (LTE bottleneck)
+  Device 20: ethernet_fast (100 Mbps)
+  → Link: ~100 Mbps (ethernet_fast bottleneck)
 ```
 
 **Random Variation:** Each link has ±10% random variation for realism
@@ -331,16 +308,16 @@ python evaluate_edge_opf.py --mode comparison --servers 30 --case testbeds/pglib
 ### Output Example:
 ```
 Setting up edge infrastructure with 30 servers...
-Loaded 40 device configurations from edge_devices_config.json
+Loaded 36 device configurations from edge_devices_config.json
 Loaded 7 network profiles
 
-  Server 1: Supermicro E300-9D
-    - Device Type: data_center_edge
-    - Tier: premium, Network: fiber
-    - CPU: 12 cores @ 2.8 GHz
-    - Compute Efficiency: 1.25x
+  Server 1: Siemens SIMATIC IPC627E
+    - Device Type: industrial_controller
+    - Tier: standard, Network: ethernet_fast
+    - CPU: 4 cores @ 2.0 GHz
+    - Compute Efficiency: 0.85x
 
-  Server 24: Moxa MC-1100
+  Server 20: Moxa MC-1100
     - Device Type: iot_gateway
     - Tier: basic, Network: ethernet_fast
     - CPU: 1 core @ 1.2 GHz
@@ -350,9 +327,9 @@ Loaded 7 network profiles
     Using topology from: pglib_opf_case30_ieee.m
     Grid: 30 buses, 41 lines
 
-    Link 1↔2: 941 Mbps, 4.7ms latency
+    Link 1↔2: 987 Mbps, 5.2ms latency
     Link 10↔20: 54 Mbps, 43.4ms latency (LTE bottleneck)
-    Link 24↔25: 97 Mbps, 9.7ms latency
+    Link 20↔21: 97 Mbps, 9.7ms latency
 
 ✓ Created 30 edge servers and 82 network links (topology-based)
 ```
@@ -366,8 +343,8 @@ Loaded 7 network profiles
 1. Open `edge_devices_config.json`
 2. Add new device to the `devices` array
 3. Specify:
-   - `device_type`: One of the 7 types
-   - `tier`: premium/standard/basic
+   - `device_type`: One of the 6 types
+   - `tier`: standard/basic
    - `network_type`: One of 7 network profiles
    - `specs`: Hardware specifications
    - `performance`: Performance characteristics
@@ -384,26 +361,24 @@ Add new profile to `network_profiles` section with bandwidth, latency, and packe
 
 ## Summary Statistics
 
-**Total Devices:** 40
+**Total Devices:** 36
 
 **Tier Distribution:**
-- Premium (Large): 4 devices (10%)
-- Standard (Medium): 16 devices (40%)
-- Basic (Small): 20 devices (50%)
+- Standard (Medium): 16 devices (44.4%)
+- Basic (Small): 20 devices (55.6%)
 
 **Device Type Distribution:**
-- Data Center Edge: 4 (10%)
-- Industrial Controllers: 7 (17.5%)
-- Enterprise Servers: 7 (17.5%)
-- AI/ML Platforms: 5 (12.5%)
-- IoT Gateways: 8 (20%)
-- Wireless Edge: 5 (12.5%)
-- Embedded/Dev: 4 (10%)
+- Industrial Controllers: 7 (19.4%)
+- Enterprise Servers: 7 (19.4%)
+- AI/ML Platforms: 5 (13.9%)
+- IoT Gateways: 8 (22.2%)
+- Wireless Edge: 5 (13.9%)
+- Embedded/Dev: 4 (11.1%)
 
-**Power Consumption Range:** 8W - 280W (35x variation)
-**CPU Core Range:** 1 - 16 cores (16x variation)
-**Memory Range:** 2GB - 96GB (48x variation)
+**Power Consumption Range:** 8W - 250W (31x variation)
+**CPU Core Range:** 1 - 8 cores (8x variation)
+**Memory Range:** 2GB - 32GB (16x variation)
 **Network Bandwidth Range:** 50 Mbps - 1000 Mbps (20x variation)
-**Latency Range:** 2ms - 40ms (20x variation)
+**Latency Range:** 10ms - 60ms (6x variation)
 
 This creates a **highly heterogeneous and realistic edge computing environment** for evaluating distributed OPF algorithms on diverse hardware with varied network conditions.
