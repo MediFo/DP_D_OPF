@@ -532,6 +532,7 @@ class EdgeOPFSimulator:
             'execution_mode': 'parallel' if parallel else 'sequential',
             'node_results': node_results,
             'simulation_stats': sim_stats,
+            'device_configs': {'devices': self.device_configs} if self.device_configs else {},
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
         }
 
@@ -606,6 +607,7 @@ class EdgeOPFSimulator:
             'execution_mode': 'centralized',
             'result': result,
             'simulation_stats': sim_stats,
+            'device_configs': {'devices': self.device_configs} if self.device_configs else {},
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
         }
 
