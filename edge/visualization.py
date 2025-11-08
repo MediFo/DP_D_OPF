@@ -310,34 +310,76 @@ class ResultsExporter:
                 f"{prefix}_resource_heatmap.png"
             )
 
-        # Plot 6: Aggregated statistics (box plots)
-        if 'simulation_stats' in results and 'servers' in results['simulation_stats']:
-            self._plot_aggregated_statistics(
-                results['simulation_stats']['servers'],
-                f"{prefix}_aggregated_stats.png"
+        # Plot 6: Stacked area chart - contribution over time
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_stacked_area_chart(
+                results['node_results'],
+                f"{prefix}_stacked_area.png"
             )
 
-        # Plot 7: Device tier comparison (if device configs available)
+        # Plot 7: Parallel coordinates - multi-metric comparison
         if 'simulation_stats' in results and 'servers' in results['simulation_stats']:
-            self._plot_tier_comparison(
+            self._plot_parallel_coordinates(
+                results['simulation_stats']['servers'],
+                f"{prefix}_parallel_coords.png"
+            )
+
+        # Plot 8: Sorted bar charts - all devices ranked
+        if 'simulation_stats' in results and 'servers' in results['simulation_stats']:
+            self._plot_sorted_bars(
+                results['simulation_stats']['servers'],
+                f"{prefix}_sorted_devices.png"
+            )
+
+        # Plot 9: Device type comparison (6 types)
+        if 'simulation_stats' in results and 'servers' in results['simulation_stats']:
+            self._plot_device_type_comparison(
                 results['simulation_stats']['servers'],
                 results.get('device_configs', {}),
-                f"{prefix}_tier_comparison.png"
+                f"{prefix}_device_types.png"
             )
 
-        # Plot 8: Top N devices by resource usage
+        # Plot 10: Correlation matrix
         if 'simulation_stats' in results and 'servers' in results['simulation_stats']:
-            self._plot_top_n_devices(
+            self._plot_correlation_matrix(
                 results['simulation_stats']['servers'],
-                f"{prefix}_top_devices.png",
-                n=10
+                f"{prefix}_correlation_matrix.png"
             )
 
-        # Plot 9: Distribution histograms
+        # Plot 11: Cumulative distribution functions
         if 'simulation_stats' in results and 'servers' in results['simulation_stats']:
-            self._plot_resource_distributions(
+            self._plot_cdf_curves(
                 results['simulation_stats']['servers'],
-                f"{prefix}_resource_distributions.png"
+                f"{prefix}_cdf_curves.png"
+            )
+
+        # Plot 12: Efficiency scatter plots
+        if 'simulation_stats' in results and 'servers' in results['simulation_stats']:
+            self._plot_efficiency_scatter(
+                results['simulation_stats']['servers'],
+                f"{prefix}_efficiency_scatter.png"
+            )
+
+        # Plot 13: Percentile bands over time
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_percentile_bands(
+                results['node_results'],
+                f"{prefix}_percentile_bands.png"
+            )
+
+        # Plot 14: Small multiples grid
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_small_multiples(
+                results['node_results'],
+                f"{prefix}_small_multiples.png"
+            )
+
+        # Plot 15: Network topology with resource overlay
+        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+            self._plot_network_topology(
+                results['simulation_stats']['servers'],
+                results['simulation_stats']['links'],
+                f"{prefix}_network_topology.png"
             )
 
         print("✓ Plot generation completed")
@@ -598,210 +640,168 @@ class ResultsExporter:
 
         print(f"  - Saved resource heatmap to {filename}")
 
-    def _plot_aggregated_statistics(self, servers: Dict, filename: str):
-        """Plot aggregated statistics with box plots showing distribution"""
-        cpu_avg = [stats.get('avg_cpu_usage', 0) for stats in servers.values()]
-        cpu_max = [stats.get('max_cpu_usage', 0) for stats in servers.values()]
-        mem_avg = [stats.get('avg_memory_usage_mb', 0) for stats in servers.values()]
-        mem_max = [stats.get('max_memory_usage_mb', 0) for stats in servers.values()]
-        power = [stats.get('avg_power_w', 0) for stats in servers.values()]
-        energy = [stats.get('total_energy_wh', 0) for stats in servers.values()]
+    def _plot_stacked_area_chart(self, node_results: List[Dict], filename: str):
+        """Plot stacked area chart showing contribution of each device over time"""
+        # Collect time series data
+        cpu_data = {}
+        mem_data = {}
 
-        fig, axes = plt.subplots(2, 3, figsize=(16, 10))
-        fig.suptitle('Aggregated Resource Statistics Across All Devices', fontsize=16, fontweight='bold')
+        for result in sorted(node_results, key=lambda x: x.get('node_id', 0)):
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'cpu_history' in monitoring and 'timestamps' in monitoring:
+                    node_id = result.get('node_id', '?')
+                    cpu_data[node_id] = monitoring['cpu_history']
+                    mem_data[node_id] = monitoring['memory_history']
 
-        # CPU average box plot
-        bp1 = axes[0, 0].boxplot([cpu_avg], vert=True, patch_artist=True, widths=0.5)
-        bp1['boxes'][0].set_facecolor('skyblue')
-        axes[0, 0].set_ylabel('CPU Usage (%)', fontsize=12)
-        axes[0, 0].set_title(f'Avg CPU Distribution\nMean: {np.mean(cpu_avg):.1f}% | Median: {np.median(cpu_avg):.1f}%', fontsize=12)
-        axes[0, 0].set_xticklabels(['All Devices'])
-        axes[0, 0].grid(True, alpha=0.3, axis='y')
-
-        # CPU max box plot
-        bp2 = axes[0, 1].boxplot([cpu_max], vert=True, patch_artist=True, widths=0.5)
-        bp2['boxes'][0].set_facecolor('coral')
-        axes[0, 1].set_ylabel('CPU Usage (%)', fontsize=12)
-        axes[0, 1].set_title(f'Max CPU Distribution\nMean: {np.mean(cpu_max):.1f}% | Median: {np.median(cpu_max):.1f}%', fontsize=12)
-        axes[0, 1].set_xticklabels(['All Devices'])
-        axes[0, 1].grid(True, alpha=0.3, axis='y')
-
-        # Memory average box plot
-        bp3 = axes[0, 2].boxplot([mem_avg], vert=True, patch_artist=True, widths=0.5)
-        bp3['boxes'][0].set_facecolor('lightgreen')
-        axes[0, 2].set_ylabel('Memory (MB)', fontsize=12)
-        axes[0, 2].set_title(f'Avg Memory Distribution\nMean: {np.mean(mem_avg):.1f} MB | Median: {np.median(mem_avg):.1f} MB', fontsize=12)
-        axes[0, 2].set_xticklabels(['All Devices'])
-        axes[0, 2].grid(True, alpha=0.3, axis='y')
-
-        # Memory max box plot
-        bp4 = axes[1, 0].boxplot([mem_max], vert=True, patch_artist=True, widths=0.5)
-        bp4['boxes'][0].set_facecolor('plum')
-        axes[1, 0].set_ylabel('Memory (MB)', fontsize=12)
-        axes[1, 0].set_title(f'Max Memory Distribution\nMean: {np.mean(mem_max):.1f} MB | Median: {np.median(mem_max):.1f} MB', fontsize=12)
-        axes[1, 0].set_xticklabels(['All Devices'])
-        axes[1, 0].grid(True, alpha=0.3, axis='y')
-
-        # Power box plot
-        bp5 = axes[1, 1].boxplot([power], vert=True, patch_artist=True, widths=0.5)
-        bp5['boxes'][0].set_facecolor('gold')
-        axes[1, 1].set_ylabel('Power (W)', fontsize=12)
-        axes[1, 1].set_title(f'Avg Power Distribution\nMean: {np.mean(power):.1f} W | Median: {np.median(power):.1f} W', fontsize=12)
-        axes[1, 1].set_xticklabels(['All Devices'])
-        axes[1, 1].grid(True, alpha=0.3, axis='y')
-
-        # Energy box plot
-        bp6 = axes[1, 2].boxplot([energy], vert=True, patch_artist=True, widths=0.5)
-        bp6['boxes'][0].set_facecolor('lightcoral')
-        axes[1, 2].set_ylabel('Energy (Wh)', fontsize=12)
-        axes[1, 2].set_title(f'Total Energy Distribution\nMean: {np.mean(energy):.2f} Wh | Median: {np.median(energy):.2f} Wh', fontsize=12)
-        axes[1, 2].set_xticklabels(['All Devices'])
-        axes[1, 2].grid(True, alpha=0.3, axis='y')
-
-        plt.tight_layout()
-        filepath = self.plots_dir / filename
-        plt.savefig(filepath, dpi=300, bbox_inches='tight')
-        plt.close()
-
-        print(f"  - Saved aggregated statistics plot to {filename}")
-
-    def _plot_tier_comparison(self, servers: Dict, device_configs: Dict, filename: str):
-        """Plot comparison between device tiers (standard vs basic)"""
-        # Group servers by tier if device config available
-        standard_cpu = []
-        standard_mem = []
-        standard_power = []
-        basic_cpu = []
-        basic_mem = []
-        basic_power = []
-
-        for sid, stats in servers.items():
-            # Try to determine tier from device config
-            device_id = stats.get('id', sid)
-            tier = 'basic'  # default
-
-            # If we have device configs, look up the tier
-            if isinstance(device_configs, dict) and 'devices' in device_configs:
-                for dev in device_configs['devices']:
-                    if dev.get('id') == device_id:
-                        tier = dev.get('tier', 'basic')
-                        break
-
-            cpu = stats.get('avg_cpu_usage', 0)
-            mem = stats.get('avg_memory_usage_mb', 0)
-            pwr = stats.get('avg_power_w', 0)
-
-            if tier == 'standard':
-                standard_cpu.append(cpu)
-                standard_mem.append(mem)
-                standard_power.append(pwr)
-            else:  # basic
-                basic_cpu.append(cpu)
-                basic_mem.append(mem)
-                basic_power.append(pwr)
-
-        # If we don't have clear tier separation, skip this plot
-        if not standard_cpu or not basic_cpu:
-            print("  - Skipping tier comparison (insufficient tier data)")
+        if not cpu_data:
+            print("  - No time series data for stacked area chart")
             return
 
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-        fig.suptitle('Device Tier Comparison: Standard vs Basic', fontsize=16, fontweight='bold')
+        # Align all time series to same length
+        max_len = max(len(v) for v in cpu_data.values())
+        for nid in cpu_data:
+            while len(cpu_data[nid]) < max_len:
+                cpu_data[nid].append(cpu_data[nid][-1] if cpu_data[nid] else 0)
+            while len(mem_data[nid]) < max_len:
+                mem_data[nid].append(mem_data[nid][-1] if mem_data[nid] else 0)
 
-        # CPU comparison
-        bp1 = axes[0].boxplot([standard_cpu, basic_cpu], labels=['Standard', 'Basic'],
-                               patch_artist=True, widths=0.6)
-        bp1['boxes'][0].set_facecolor('steelblue')
-        bp1['boxes'][1].set_facecolor('lightcoral')
-        axes[0].set_ylabel('Avg CPU Usage (%)', fontsize=12)
-        axes[0].set_title(f'CPU Usage by Tier\nStd: {np.mean(standard_cpu):.1f}% | Basic: {np.mean(basic_cpu):.1f}%', fontsize=12)
-        axes[0].grid(True, alpha=0.3, axis='y')
+        fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+        fig.suptitle('Cumulative Resource Contribution Over Time (All Devices)', fontsize=16, fontweight='bold')
 
-        # Memory comparison
-        bp2 = axes[1].boxplot([standard_mem, basic_mem], labels=['Standard', 'Basic'],
-                               patch_artist=True, widths=0.6)
-        bp2['boxes'][0].set_facecolor('mediumseagreen')
-        bp2['boxes'][1].set_facecolor('plum')
-        axes[1].set_ylabel('Avg Memory (MB)', fontsize=12)
-        axes[1].set_title(f'Memory Usage by Tier\nStd: {np.mean(standard_mem):.1f} MB | Basic: {np.mean(basic_mem):.1f} MB', fontsize=12)
-        axes[1].grid(True, alpha=0.3, axis='y')
+        # CPU stacked area
+        cpu_matrix = np.array([cpu_data[nid] for nid in sorted(cpu_data.keys())])
+        axes[0].stackplot(range(max_len), *cpu_matrix, alpha=0.7)
+        axes[0].set_xlabel('Time Step', fontsize=12)
+        axes[0].set_ylabel('Total CPU Usage (%)', fontsize=12)
+        axes[0].set_title(f'CPU Usage Stack ({len(cpu_data)} devices)', fontsize=14)
+        axes[0].grid(True, alpha=0.3)
 
-        # Power comparison
-        bp3 = axes[2].boxplot([standard_power, basic_power], labels=['Standard', 'Basic'],
-                               patch_artist=True, widths=0.6)
-        bp3['boxes'][0].set_facecolor('gold')
-        bp3['boxes'][1].set_facecolor('lightskyblue')
-        axes[2].set_ylabel('Avg Power (W)', fontsize=12)
-        axes[2].set_title(f'Power Consumption by Tier\nStd: {np.mean(standard_power):.1f} W | Basic: {np.mean(basic_power):.1f} W', fontsize=12)
-        axes[2].grid(True, alpha=0.3, axis='y')
+        # Memory stacked area
+        mem_matrix = np.array([mem_data[nid] for nid in sorted(mem_data.keys())])
+        axes[1].stackplot(range(max_len), *mem_matrix, alpha=0.7)
+        axes[1].set_xlabel('Time Step', fontsize=12)
+        axes[1].set_ylabel('Total Memory (MB)', fontsize=12)
+        axes[1].set_title(f'Memory Usage Stack ({len(mem_data)} devices)', fontsize=14)
+        axes[1].grid(True, alpha=0.3)
 
         plt.tight_layout()
         filepath = self.plots_dir / filename
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
         plt.close()
 
-        print(f"  - Saved tier comparison plot to {filename}")
+        print(f"  - Saved stacked area chart to {filename}")
 
-    def _plot_top_n_devices(self, servers: Dict, filename: str, n: int = 10):
-        """Plot top N devices by resource usage"""
-        # Collect all server data
-        server_data = []
-        for sid, stats in servers.items():
-            server_data.append({
+    def _plot_parallel_coordinates(self, servers: Dict, filename: str):
+        """Plot parallel coordinates showing multiple metrics for all devices"""
+        # Collect data for all devices
+        device_data = []
+        for sid, stats in sorted(servers.items()):
+            device_data.append({
                 'id': stats.get('id', sid),
-                'name': stats.get('name', f'Server_{sid}'),
-                'cpu': stats.get('avg_cpu_usage', 0),
-                'mem': stats.get('avg_memory_usage_mb', 0),
+                'cpu_avg': stats.get('avg_cpu_usage', 0),
+                'cpu_max': stats.get('max_cpu_usage', 0),
+                'mem_avg': stats.get('avg_memory_usage_mb', 0),
+                'mem_max': stats.get('max_memory_usage_mb', 0),
                 'power': stats.get('avg_power_w', 0),
                 'energy': stats.get('total_energy_wh', 0)
             })
 
-        # Sort by different metrics and get top N
-        top_cpu = sorted(server_data, key=lambda x: x['cpu'], reverse=True)[:n]
-        top_mem = sorted(server_data, key=lambda x: x['mem'], reverse=True)[:n]
-        top_power = sorted(server_data, key=lambda x: x['power'], reverse=True)[:n]
-        top_energy = sorted(server_data, key=lambda x: x['energy'], reverse=True)[:n]
+        # Normalize data for parallel coordinates (0-1 scale)
+        metrics = ['cpu_avg', 'cpu_max', 'mem_avg', 'mem_max', 'power', 'energy']
+        normalized = []
+        for dev in device_data:
+            normalized.append([dev[m] for m in metrics])
+
+        normalized = np.array(normalized)
+        for i in range(len(metrics)):
+            col = normalized[:, i]
+            if col.max() > col.min():
+                normalized[:, i] = (col - col.min()) / (col.max() - col.min())
+
+        fig, ax = plt.subplots(figsize=(14, 8))
+        fig.suptitle('Parallel Coordinates: Multi-Metric Device Comparison', fontsize=16, fontweight='bold')
+
+        # Plot lines for each device
+        x = np.arange(len(metrics))
+        for i, device in enumerate(normalized):
+            ax.plot(x, device, alpha=0.4, linewidth=1)
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(['Avg CPU', 'Max CPU', 'Avg Mem', 'Max Mem', 'Power', 'Energy'], rotation=0, fontsize=11)
+        ax.set_ylabel('Normalized Value (0-1)', fontsize=12)
+        ax.set_title(f'All {len(device_data)} Devices Across 6 Metrics', fontsize=13)
+        ax.grid(True, alpha=0.3, axis='y')
+        ax.set_ylim(-0.05, 1.05)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved parallel coordinates plot to {filename}")
+
+    def _plot_sorted_bars(self, servers: Dict, filename: str):
+        """Plot sorted bar charts for all devices (no filtering)"""
+        # Collect all devices
+        devices = []
+        for sid, stats in servers.items():
+            devices.append({
+                'id': stats.get('id', sid),
+                'cpu': stats.get('max_cpu_usage', 0),  # Use max for more interesting visualization
+                'mem': stats.get('max_memory_usage_mb', 0),
+                'power': stats.get('avg_power_w', 0),
+                'energy': stats.get('total_energy_wh', 0)
+            })
 
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        fig.suptitle(f'Top {n} Devices by Resource Usage', fontsize=16, fontweight='bold')
+        fig.suptitle(f'All {len(devices)} Devices Ranked by Resource Usage', fontsize=16, fontweight='bold')
 
-        # Top CPU
-        cpu_labels = [f"D{d['id']}" for d in top_cpu]
-        cpu_values = [d['cpu'] for d in top_cpu]
-        axes[0, 0].barh(cpu_labels, cpu_values, color='orangered', alpha=0.8)
-        axes[0, 0].set_xlabel('Avg CPU Usage (%)', fontsize=12)
-        axes[0, 0].set_ylabel('Device', fontsize=12)
-        axes[0, 0].set_title(f'Top {n} by CPU Usage', fontsize=14)
+        # Sort by CPU
+        sorted_cpu = sorted(devices, key=lambda x: x['cpu'], reverse=True)
+        labels_cpu = [f"D{d['id']}" for d in sorted_cpu]
+        values_cpu = [d['cpu'] for d in sorted_cpu]
+        axes[0, 0].barh(range(len(labels_cpu)), values_cpu, color='orangered', alpha=0.8)
+        axes[0, 0].set_yticks(range(len(labels_cpu)))
+        axes[0, 0].set_yticklabels(labels_cpu, fontsize=7)
+        axes[0, 0].set_xlabel('Max CPU Usage (%)', fontsize=11)
+        axes[0, 0].set_title('Devices Sorted by CPU', fontsize=13)
         axes[0, 0].invert_yaxis()
         axes[0, 0].grid(True, alpha=0.3, axis='x')
 
-        # Top Memory
-        mem_labels = [f"D{d['id']}" for d in top_mem]
-        mem_values = [d['mem'] for d in top_mem]
-        axes[0, 1].barh(mem_labels, mem_values, color='dodgerblue', alpha=0.8)
-        axes[0, 1].set_xlabel('Avg Memory (MB)', fontsize=12)
-        axes[0, 1].set_ylabel('Device', fontsize=12)
-        axes[0, 1].set_title(f'Top {n} by Memory Usage', fontsize=14)
+        # Sort by Memory
+        sorted_mem = sorted(devices, key=lambda x: x['mem'], reverse=True)
+        labels_mem = [f"D{d['id']}" for d in sorted_mem]
+        values_mem = [d['mem'] for d in sorted_mem]
+        axes[0, 1].barh(range(len(labels_mem)), values_mem, color='dodgerblue', alpha=0.8)
+        axes[0, 1].set_yticks(range(len(labels_mem)))
+        axes[0, 1].set_yticklabels(labels_mem, fontsize=7)
+        axes[0, 1].set_xlabel('Max Memory (MB)', fontsize=11)
+        axes[0, 1].set_title('Devices Sorted by Memory', fontsize=13)
         axes[0, 1].invert_yaxis()
         axes[0, 1].grid(True, alpha=0.3, axis='x')
 
-        # Top Power
-        pwr_labels = [f"D{d['id']}" for d in top_power]
-        pwr_values = [d['power'] for d in top_power]
-        axes[1, 0].barh(pwr_labels, pwr_values, color='gold', alpha=0.8)
-        axes[1, 0].set_xlabel('Avg Power (W)', fontsize=12)
-        axes[1, 0].set_ylabel('Device', fontsize=12)
-        axes[1, 0].set_title(f'Top {n} by Power Consumption', fontsize=14)
+        # Sort by Power
+        sorted_pwr = sorted(devices, key=lambda x: x['power'], reverse=True)
+        labels_pwr = [f"D{d['id']}" for d in sorted_pwr]
+        values_pwr = [d['power'] for d in sorted_pwr]
+        axes[1, 0].barh(range(len(labels_pwr)), values_pwr, color='gold', alpha=0.8)
+        axes[1, 0].set_yticks(range(len(labels_pwr)))
+        axes[1, 0].set_yticklabels(labels_pwr, fontsize=7)
+        axes[1, 0].set_xlabel('Avg Power (W)', fontsize=11)
+        axes[1, 0].set_title('Devices Sorted by Power', fontsize=13)
         axes[1, 0].invert_yaxis()
         axes[1, 0].grid(True, alpha=0.3, axis='x')
 
-        # Top Energy
-        eng_labels = [f"D{d['id']}" for d in top_energy]
-        eng_values = [d['energy'] for d in top_energy]
-        axes[1, 1].barh(eng_labels, eng_values, color='limegreen', alpha=0.8)
-        axes[1, 1].set_xlabel('Total Energy (Wh)', fontsize=12)
-        axes[1, 1].set_ylabel('Device', fontsize=12)
-        axes[1, 1].set_title(f'Top {n} by Energy Consumption', fontsize=14)
+        # Sort by Energy
+        sorted_eng = sorted(devices, key=lambda x: x['energy'], reverse=True)
+        labels_eng = [f"D{d['id']}" for d in sorted_eng]
+        values_eng = [d['energy'] for d in sorted_eng]
+        axes[1, 1].barh(range(len(labels_eng)), values_eng, color='limegreen', alpha=0.8)
+        axes[1, 1].set_yticks(range(len(labels_eng)))
+        axes[1, 1].set_yticklabels(labels_eng, fontsize=7)
+        axes[1, 1].set_xlabel('Total Energy (Wh)', fontsize=11)
+        axes[1, 1].set_title('Devices Sorted by Energy', fontsize=13)
         axes[1, 1].invert_yaxis()
         axes[1, 1].grid(True, alpha=0.3, axis='x')
 
@@ -810,64 +810,415 @@ class ResultsExporter:
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
         plt.close()
 
-        print(f"  - Saved top {n} devices plot to {filename}")
+        print(f"  - Saved sorted bars plot to {filename}")
 
-    def _plot_resource_distributions(self, servers: Dict, filename: str):
-        """Plot distribution histograms for all resource metrics"""
-        cpu_avg = [stats.get('avg_cpu_usage', 0) for stats in servers.values()]
-        cpu_max = [stats.get('max_cpu_usage', 0) for stats in servers.values()]
-        mem_avg = [stats.get('avg_memory_usage_mb', 0) for stats in servers.values()]
-        power = [stats.get('avg_power_w', 0) for stats in servers.values()]
+    def _plot_device_type_comparison(self, servers: Dict, device_configs: Dict, filename: str):
+        """Compare all 6 device types side by side"""
+        # Group by device type
+        type_data = {}
 
-        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-        fig.suptitle('Resource Usage Distribution Across All Devices', fontsize=16, fontweight='bold')
+        for sid, stats in servers.items():
+            device_id = stats.get('id', sid)
+            device_type = 'unknown'
 
-        # CPU average histogram
-        axes[0, 0].hist(cpu_avg, bins=20, color='skyblue', edgecolor='black', alpha=0.7)
-        axes[0, 0].axvline(np.mean(cpu_avg), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(cpu_avg):.1f}%')
-        axes[0, 0].axvline(np.median(cpu_avg), color='green', linestyle='--', linewidth=2, label=f'Median: {np.median(cpu_avg):.1f}%')
-        axes[0, 0].set_xlabel('Avg CPU Usage (%)', fontsize=12)
-        axes[0, 0].set_ylabel('Number of Devices', fontsize=12)
-        axes[0, 0].set_title('Average CPU Usage Distribution', fontsize=13)
-        axes[0, 0].legend()
-        axes[0, 0].grid(True, alpha=0.3, axis='y')
+            if isinstance(device_configs, dict) and 'devices' in device_configs:
+                for dev in device_configs['devices']:
+                    if dev.get('id') == device_id:
+                        device_type = dev.get('device_type', 'unknown')
+                        break
 
-        # CPU max histogram
-        axes[0, 1].hist(cpu_max, bins=20, color='coral', edgecolor='black', alpha=0.7)
-        axes[0, 1].axvline(np.mean(cpu_max), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(cpu_max):.1f}%')
-        axes[0, 1].axvline(np.median(cpu_max), color='green', linestyle='--', linewidth=2, label=f'Median: {np.median(cpu_max):.1f}%')
-        axes[0, 1].set_xlabel('Max CPU Usage (%)', fontsize=12)
-        axes[0, 1].set_ylabel('Number of Devices', fontsize=12)
-        axes[0, 1].set_title('Maximum CPU Usage Distribution', fontsize=13)
-        axes[0, 1].legend()
-        axes[0, 1].grid(True, alpha=0.3, axis='y')
+            if device_type not in type_data:
+                type_data[device_type] = {'cpu': [], 'mem': [], 'power': []}
 
-        # Memory histogram
-        axes[1, 0].hist(mem_avg, bins=20, color='lightgreen', edgecolor='black', alpha=0.7)
-        axes[1, 0].axvline(np.mean(mem_avg), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(mem_avg):.1f} MB')
-        axes[1, 0].axvline(np.median(mem_avg), color='green', linestyle='--', linewidth=2, label=f'Median: {np.median(mem_avg):.1f} MB')
-        axes[1, 0].set_xlabel('Avg Memory (MB)', fontsize=12)
-        axes[1, 0].set_ylabel('Number of Devices', fontsize=12)
-        axes[1, 0].set_title('Average Memory Usage Distribution', fontsize=13)
-        axes[1, 0].legend()
-        axes[1, 0].grid(True, alpha=0.3, axis='y')
+            type_data[device_type]['cpu'].append(stats.get('avg_cpu_usage', 0))
+            type_data[device_type]['mem'].append(stats.get('avg_memory_usage_mb', 0))
+            type_data[device_type]['power'].append(stats.get('avg_power_w', 0))
 
-        # Power histogram
-        axes[1, 1].hist(power, bins=20, color='gold', edgecolor='black', alpha=0.7)
-        axes[1, 1].axvline(np.mean(power), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(power):.1f} W')
-        axes[1, 1].axvline(np.median(power), color='green', linestyle='--', linewidth=2, label=f'Median: {np.median(power):.1f} W')
-        axes[1, 1].set_xlabel('Avg Power (W)', fontsize=12)
-        axes[1, 1].set_ylabel('Number of Devices', fontsize=12)
-        axes[1, 1].set_title('Average Power Distribution', fontsize=13)
-        axes[1, 1].legend()
-        axes[1, 1].grid(True, alpha=0.3, axis='y')
+        if len(type_data) < 2 or 'unknown' in type_data and len(type_data) == 1:
+            print("  - Skipping device type comparison (insufficient type data)")
+            return
+
+        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+        fig.suptitle('Device Type Comparison (All 6 Types)', fontsize=16, fontweight='bold')
+
+        types = sorted([t for t in type_data.keys() if t != 'unknown'])
+
+        # CPU comparison
+        cpu_data = [type_data[t]['cpu'] for t in types]
+        bp1 = axes[0].boxplot(cpu_data, labels=types, patch_artist=True, widths=0.6)
+        for patch in bp1['boxes']:
+            patch.set_facecolor('skyblue')
+        axes[0].set_ylabel('Avg CPU Usage (%)', fontsize=12)
+        axes[0].set_title('CPU by Device Type', fontsize=13)
+        axes[0].tick_params(axis='x', rotation=45, labelsize=9)
+        axes[0].grid(True, alpha=0.3, axis='y')
+
+        # Memory comparison
+        mem_data = [type_data[t]['mem'] for t in types]
+        bp2 = axes[1].boxplot(mem_data, labels=types, patch_artist=True, widths=0.6)
+        for patch in bp2['boxes']:
+            patch.set_facecolor('lightgreen')
+        axes[1].set_ylabel('Avg Memory (MB)', fontsize=12)
+        axes[1].set_title('Memory by Device Type', fontsize=13)
+        axes[1].tick_params(axis='x', rotation=45, labelsize=9)
+        axes[1].grid(True, alpha=0.3, axis='y')
+
+        # Power comparison
+        pwr_data = [type_data[t]['power'] for t in types]
+        bp3 = axes[2].boxplot(pwr_data, labels=types, patch_artist=True, widths=0.6)
+        for patch in bp3['boxes']:
+            patch.set_facecolor('gold')
+        axes[2].set_ylabel('Avg Power (W)', fontsize=12)
+        axes[2].set_title('Power by Device Type', fontsize=13)
+        axes[2].tick_params(axis='x', rotation=45, labelsize=9)
+        axes[2].grid(True, alpha=0.3, axis='y')
 
         plt.tight_layout()
         filepath = self.plots_dir / filename
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
         plt.close()
 
-        print(f"  - Saved resource distribution plots to {filename}")
+        print(f"  - Saved device type comparison to {filename}")
+
+    def _plot_correlation_matrix(self, servers: Dict, filename: str):
+        """Plot correlation matrix between different resource metrics"""
+        # Collect all metrics
+        data = {
+            'CPU_Avg': [],
+            'CPU_Max': [],
+            'Mem_Avg': [],
+            'Mem_Max': [],
+            'Power': [],
+            'Energy': []
+        }
+
+        for stats in servers.values():
+            data['CPU_Avg'].append(stats.get('avg_cpu_usage', 0))
+            data['CPU_Max'].append(stats.get('max_cpu_usage', 0))
+            data['Mem_Avg'].append(stats.get('avg_memory_usage_mb', 0))
+            data['Mem_Max'].append(stats.get('max_memory_usage_mb', 0))
+            data['Power'].append(stats.get('avg_power_w', 0))
+            data['Energy'].append(stats.get('total_energy_wh', 0))
+
+        # Calculate correlation matrix
+        df_data = np.array([data[k] for k in data.keys()]).T
+        corr_matrix = np.corrcoef(df_data.T)
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+        fig.suptitle('Resource Metrics Correlation Matrix', fontsize=16, fontweight='bold')
+
+        im = ax.imshow(corr_matrix, cmap='RdYlGn', aspect='auto', vmin=-1, vmax=1)
+        ax.set_xticks(range(len(data)))
+        ax.set_yticks(range(len(data)))
+        ax.set_xticklabels(data.keys(), rotation=45, ha='right')
+        ax.set_yticklabels(data.keys())
+
+        # Add correlation values
+        for i in range(len(data)):
+            for j in range(len(data)):
+                text = ax.text(j, i, f'{corr_matrix[i, j]:.2f}',
+                             ha="center", va="center", color="black", fontsize=10)
+
+        cbar = plt.colorbar(im, ax=ax)
+        cbar.set_label('Correlation Coefficient', rotation=270, labelpad=20)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved correlation matrix to {filename}")
+
+    def _plot_cdf_curves(self, servers: Dict, filename: str):
+        """Plot cumulative distribution functions for resource metrics"""
+        cpu_avg = sorted([stats.get('avg_cpu_usage', 0) for stats in servers.values()])
+        mem_avg = sorted([stats.get('avg_memory_usage_mb', 0) for stats in servers.values()])
+        power = sorted([stats.get('avg_power_w', 0) for stats in servers.values()])
+        energy = sorted([stats.get('total_energy_wh', 0) for stats in servers.values()])
+
+        n = len(cpu_avg)
+        cdf = np.arange(1, n+1) / n
+
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        fig.suptitle('Cumulative Distribution Functions (CDF)', fontsize=16, fontweight='bold')
+
+        # CPU CDF
+        axes[0, 0].plot(cpu_avg, cdf, linewidth=2, color='orangered')
+        axes[0, 0].fill_between(cpu_avg, cdf, alpha=0.3, color='orangered')
+        axes[0, 0].set_xlabel('Avg CPU Usage (%)', fontsize=12)
+        axes[0, 0].set_ylabel('Cumulative Probability', fontsize=12)
+        axes[0, 0].set_title(f'CPU Usage CDF\nMedian: {np.median(cpu_avg):.1f}%', fontsize=13)
+        axes[0, 0].grid(True, alpha=0.3)
+        axes[0, 0].set_ylim(0, 1)
+
+        # Memory CDF
+        axes[0, 1].plot(mem_avg, cdf, linewidth=2, color='dodgerblue')
+        axes[0, 1].fill_between(mem_avg, cdf, alpha=0.3, color='dodgerblue')
+        axes[0, 1].set_xlabel('Avg Memory (MB)', fontsize=12)
+        axes[0, 1].set_ylabel('Cumulative Probability', fontsize=12)
+        axes[0, 1].set_title(f'Memory Usage CDF\nMedian: {np.median(mem_avg):.1f} MB', fontsize=13)
+        axes[0, 1].grid(True, alpha=0.3)
+        axes[0, 1].set_ylim(0, 1)
+
+        # Power CDF
+        axes[1, 0].plot(power, cdf, linewidth=2, color='gold')
+        axes[1, 0].fill_between(power, cdf, alpha=0.3, color='gold')
+        axes[1, 0].set_xlabel('Avg Power (W)', fontsize=12)
+        axes[1, 0].set_ylabel('Cumulative Probability', fontsize=12)
+        axes[1, 0].set_title(f'Power CDF\nMedian: {np.median(power):.1f} W', fontsize=13)
+        axes[1, 0].grid(True, alpha=0.3)
+        axes[1, 0].set_ylim(0, 1)
+
+        # Energy CDF
+        axes[1, 1].plot(energy, cdf, linewidth=2, color='limegreen')
+        axes[1, 1].fill_between(energy, cdf, alpha=0.3, color='limegreen')
+        axes[1, 1].set_xlabel('Total Energy (Wh)', fontsize=12)
+        axes[1, 1].set_ylabel('Cumulative Probability', fontsize=12)
+        axes[1, 1].set_title(f'Energy CDF\nMedian: {np.median(energy):.2f} Wh', fontsize=13)
+        axes[1, 1].grid(True, alpha=0.3)
+        axes[1, 1].set_ylim(0, 1)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved CDF curves to {filename}")
+
+    def _plot_efficiency_scatter(self, servers: Dict, filename: str):
+        """Plot efficiency scatter plots showing relationships"""
+        cpu_avg = [stats.get('avg_cpu_usage', 0) for stats in servers.values()]
+        mem_avg = [stats.get('avg_memory_usage_mb', 0) for stats in servers.values()]
+        power = [stats.get('avg_power_w', 0) for stats in servers.values()]
+        energy = [stats.get('total_energy_wh', 0) for stats in servers.values()]
+        device_ids = [stats.get('id', sid) for sid, stats in servers.items()]
+
+        fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+        fig.suptitle('Resource Efficiency Scatter Plots (All Devices)', fontsize=16, fontweight='bold')
+
+        # CPU vs Memory
+        axes[0, 0].scatter(cpu_avg, mem_avg, s=100, alpha=0.6, c=range(len(cpu_avg)), cmap='viridis')
+        axes[0, 0].set_xlabel('Avg CPU Usage (%)', fontsize=12)
+        axes[0, 0].set_ylabel('Avg Memory (MB)', fontsize=12)
+        axes[0, 0].set_title('CPU vs Memory Usage', fontsize=13)
+        axes[0, 0].grid(True, alpha=0.3)
+
+        # Power vs CPU
+        axes[0, 1].scatter(power, cpu_avg, s=100, alpha=0.6, c=range(len(power)), cmap='plasma')
+        axes[0, 1].set_xlabel('Avg Power (W)', fontsize=12)
+        axes[0, 1].set_ylabel('Avg CPU Usage (%)', fontsize=12)
+        axes[0, 1].set_title('Power vs CPU Efficiency', fontsize=13)
+        axes[0, 1].grid(True, alpha=0.3)
+
+        # Power vs Memory
+        axes[1, 0].scatter(power, mem_avg, s=100, alpha=0.6, c=range(len(power)), cmap='coolwarm')
+        axes[1, 0].set_xlabel('Avg Power (W)', fontsize=12)
+        axes[1, 0].set_ylabel('Avg Memory (MB)', fontsize=12)
+        axes[1, 0].set_title('Power vs Memory Efficiency', fontsize=13)
+        axes[1, 0].grid(True, alpha=0.3)
+
+        # Energy vs CPU+Memory (combined workload)
+        combined_load = np.array(cpu_avg) + np.array(mem_avg)/100  # Normalize memory
+        axes[1, 1].scatter(combined_load, energy, s=100, alpha=0.6, c=range(len(energy)), cmap='magma')
+        axes[1, 1].set_xlabel('Combined Workload (CPU + Mem/100)', fontsize=12)
+        axes[1, 1].set_ylabel('Total Energy (Wh)', fontsize=12)
+        axes[1, 1].set_title('Workload vs Energy Consumption', fontsize=13)
+        axes[1, 1].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved efficiency scatter plots to {filename}")
+
+    def _plot_percentile_bands(self, node_results: List[Dict], filename: str):
+        """Plot percentile bands showing distribution over time"""
+        # Collect time series
+        cpu_series = []
+        mem_series = []
+
+        for result in node_results:
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'cpu_history' in monitoring:
+                    cpu_series.append(monitoring['cpu_history'])
+                    mem_series.append(monitoring['memory_history'])
+
+        if not cpu_series:
+            print("  - No time series data for percentile bands")
+            return
+
+        # Align lengths
+        max_len = max(len(s) for s in cpu_series)
+        for i in range(len(cpu_series)):
+            while len(cpu_series[i]) < max_len:
+                cpu_series[i].append(cpu_series[i][-1] if cpu_series[i] else 0)
+            while len(mem_series[i]) < max_len:
+                mem_series[i].append(mem_series[i][-1] if mem_series[i] else 0)
+
+        cpu_array = np.array(cpu_series)
+        mem_array = np.array(mem_series)
+
+        # Calculate percentiles at each time step
+        time_steps = range(max_len)
+        cpu_p10 = np.percentile(cpu_array, 10, axis=0)
+        cpu_p25 = np.percentile(cpu_array, 25, axis=0)
+        cpu_p50 = np.percentile(cpu_array, 50, axis=0)
+        cpu_p75 = np.percentile(cpu_array, 75, axis=0)
+        cpu_p90 = np.percentile(cpu_array, 90, axis=0)
+
+        mem_p10 = np.percentile(mem_array, 10, axis=0)
+        mem_p25 = np.percentile(mem_array, 25, axis=0)
+        mem_p50 = np.percentile(mem_array, 50, axis=0)
+        mem_p75 = np.percentile(mem_array, 75, axis=0)
+        mem_p90 = np.percentile(mem_array, 90, axis=0)
+
+        fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+        fig.suptitle('Percentile Bands Over Time (Aggregated View)', fontsize=16, fontweight='bold')
+
+        # CPU percentile bands
+        axes[0].fill_between(time_steps, cpu_p10, cpu_p90, alpha=0.2, color='orangered', label='10th-90th percentile')
+        axes[0].fill_between(time_steps, cpu_p25, cpu_p75, alpha=0.4, color='orangered', label='25th-75th percentile')
+        axes[0].plot(time_steps, cpu_p50, linewidth=2, color='darkred', label='Median (50th)')
+        axes[0].set_xlabel('Time Step', fontsize=12)
+        axes[0].set_ylabel('CPU Usage (%)', fontsize=12)
+        axes[0].set_title(f'CPU Usage Percentile Bands ({len(cpu_series)} devices)', fontsize=13)
+        axes[0].legend(loc='upper right')
+        axes[0].grid(True, alpha=0.3)
+
+        # Memory percentile bands
+        axes[1].fill_between(time_steps, mem_p10, mem_p90, alpha=0.2, color='dodgerblue', label='10th-90th percentile')
+        axes[1].fill_between(time_steps, mem_p25, mem_p75, alpha=0.4, color='dodgerblue', label='25th-75th percentile')
+        axes[1].plot(time_steps, mem_p50, linewidth=2, color='darkblue', label='Median (50th)')
+        axes[1].set_xlabel('Time Step', fontsize=12)
+        axes[1].set_ylabel('Memory (MB)', fontsize=12)
+        axes[1].set_title(f'Memory Usage Percentile Bands ({len(mem_series)} devices)', fontsize=13)
+        axes[1].legend(loc='upper right')
+        axes[1].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved percentile bands to {filename}")
+
+    def _plot_small_multiples(self, node_results: List[Dict], filename: str):
+        """Plot small multiples grid - one mini plot per device"""
+        cpu_data = {}
+
+        for result in sorted(node_results, key=lambda x: x.get('node_id', 0)):
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'cpu_history' in monitoring and 'timestamps' in monitoring:
+                    node_id = result.get('node_id', '?')
+                    cpu_data[node_id] = monitoring['cpu_history']
+
+        if not cpu_data:
+            print("  - No time series data for small multiples")
+            return
+
+        # Determine grid size
+        n_devices = len(cpu_data)
+        n_cols = 6
+        n_rows = (n_devices + n_cols - 1) // n_cols
+
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(18, n_rows * 2))
+        fig.suptitle(f'CPU Usage Small Multiples ({n_devices} devices)', fontsize=16, fontweight='bold')
+
+        # Flatten axes array
+        if n_rows == 1:
+            axes = [axes]
+        axes = [ax for row in axes for ax in (row if isinstance(row, np.ndarray) else [row])]
+
+        for idx, (node_id, cpu_history) in enumerate(sorted(cpu_data.items())):
+            if idx < len(axes):
+                axes[idx].plot(cpu_history, linewidth=1.5, color='steelblue')
+                axes[idx].set_title(f'Device {node_id}', fontsize=9)
+                axes[idx].set_ylim(0, 100)
+                axes[idx].grid(True, alpha=0.2)
+                axes[idx].tick_params(labelsize=7)
+
+        # Hide unused subplots
+        for idx in range(len(cpu_data), len(axes)):
+            axes[idx].axis('off')
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved small multiples grid to {filename}")
+
+    def _plot_network_topology(self, servers: Dict, links: Dict, filename: str):
+        """Plot network topology with resource usage overlay"""
+        if not links:
+            print("  - No network links for topology visualization")
+            return
+
+        # Build graph structure
+        nodes = set()
+        edges = []
+        for lid, link_stats in links.items():
+            src = link_stats.get('source_server_id', 0)
+            tgt = link_stats.get('target_server_id', 0)
+            nodes.add(src)
+            nodes.add(tgt)
+            edges.append((src, tgt))
+
+        nodes = sorted(list(nodes))
+
+        # Get CPU usage for node colors
+        node_cpu = {}
+        for sid, stats in servers.items():
+            device_id = stats.get('id', sid)
+            if device_id in nodes:
+                node_cpu[device_id] = stats.get('avg_cpu_usage', 0)
+
+        fig, ax = plt.subplots(figsize=(14, 14))
+        fig.suptitle('Network Topology with CPU Usage Overlay', fontsize=16, fontweight='bold')
+
+        # Simple circular layout
+        n = len(nodes)
+        angles = np.linspace(0, 2*np.pi, n, endpoint=False)
+        pos = {node: (np.cos(angle), np.sin(angle)) for node, angle in zip(nodes, angles)}
+
+        # Draw edges
+        for src, tgt in edges:
+            if src in pos and tgt in pos:
+                x = [pos[src][0], pos[tgt][0]]
+                y = [pos[src][1], pos[tgt][1]]
+                ax.plot(x, y, 'gray', alpha=0.3, linewidth=0.5, zorder=1)
+
+        # Draw nodes with CPU color
+        for node in nodes:
+            if node in pos:
+                cpu = node_cpu.get(node, 0)
+                color = plt.cm.YlOrRd(cpu / 100)  # Normalize to 0-1
+                ax.scatter(pos[node][0], pos[node][1], s=300, c=[color],
+                          edgecolors='black', linewidths=1.5, zorder=2)
+                ax.text(pos[node][0], pos[node][1], str(node),
+                       ha='center', va='center', fontsize=8, fontweight='bold', zorder=3)
+
+        # Add colorbar
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.YlOrRd, norm=plt.Normalize(vmin=0, vmax=100))
+        sm.set_array([])
+        cbar = plt.colorbar(sm, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label('Avg CPU Usage (%)', rotation=270, labelpad=20)
+
+        ax.set_xlim(-1.2, 1.2)
+        ax.set_ylim(-1.2, 1.2)
+        ax.set_aspect('equal')
+        ax.axis('off')
+        ax.set_title(f'{n} Nodes, {len(edges)} Links', fontsize=13)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved network topology to {filename}")
 
 
 # Test execution
