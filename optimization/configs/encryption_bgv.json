@@ -1,0 +1,12 @@
+{
+  "encryption_scheme": "bgv",
+  "caseID": "testbeds/pglib_opf_case14_ieee.m",
+  "mode": "distributed",
+  "max_iterations": 1000,
+  "rho": 10.0,
+  "tolerance": 0.01,
+  "n": 2048,
+  "log_q": 100,
+  "max_depth": 3,
+  "note": "BGV - Fully HE (addition + multiplication), integer-based, ~50x slower than Paillier"
+}

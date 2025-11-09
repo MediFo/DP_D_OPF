@@ -1,0 +1,10 @@
+{
+  "encryption_scheme": "paillier",
+  "caseID": "testbeds/pglib_opf_case14_ieee.m",
+  "mode": "distributed",
+  "max_iterations": 1000,
+  "rho": 10.0,
+  "tolerance": 0.01,
+  "key_length": 1024,
+  "note": "Paillier - Partial HE (addition only), fastest encryption"
+}

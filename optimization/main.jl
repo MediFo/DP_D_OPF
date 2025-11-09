@@ -20,6 +20,47 @@ include("scripts/fun_residual_update.jl")
 include("scripts/fun_reveal_load.jl")
 include("scripts/fun_voltage_update.jl")
 
+# Encryption support (loaded conditionally)
+function load_encryption_libraries(scheme::String)
+    if scheme == "paillier"
+        include("scripts/paillier_crypto.jl")
+        include("scripts/fun_voltage_update_sparse.jl")
+        include("scripts/fun_consensus_update_sparse_encrypted.jl")
+        include("scripts/fun_dual_update_sparse.jl")
+        include("scripts/fun_residual_update_sparse.jl")
+        include("scripts/fun_encryption_helpers.jl")
+    elseif scheme == "bgv"
+        include("scripts/bgv_crypto.jl")
+    elseif scheme == "ckks"
+        include("scripts/ckks_crypto.jl")
+    end
+end
+
+"""
+Run OPF with homomorphic encryption
+Delegates to the appropriate encryption scheme implementation
+"""
+function run_opf_encrypted(config::Dict, scheme::String)
+    println("\n🔐 Using homomorphic encryption: $scheme")
+    println("⚠️  Note: Encryption adds significant computational overhead")
+
+    # Load encryption libraries
+    load_encryption_libraries(scheme)
+
+    # For now, delegate to standalone encryption scripts
+    # Future: implement inline encrypted ADMM here
+    println("\n⚠️  To use encryption schemes, run the standalone scripts:")
+    println("  - Paillier: julia opt_main_verified.jl")
+    println("  - BGV:      julia opt_main_bgv.jl")
+    println("  - CKKS:     julia opt_main_ckks.jl")
+    println("\nFalling back to non-encrypted execution...")
+
+    # Remove encryption_scheme to avoid infinite loop
+    config_copy = copy(config)
+    delete!(config_copy, "encryption_scheme")
+    return run_opf(config_copy)
+end
+
 """
 Main OPF execution function that can run in centralized or distributed mode
 Supports config file input for edge simulation integration
@@ -39,6 +80,9 @@ function run_opf(config::Dict)
     α = get(config, "alpha", 0.1)
     method = get(config, "method", "PVP")
 
+    # Encryption scheme ("none", "paillier", "bgv", "ckks")
+    encryption_scheme = get(config, "encryption_scheme", "none")
+
     # Node ID for distributed mode
     node_id = get(config, "node_id", 1)
 
@@ -46,11 +90,17 @@ function run_opf(config::Dict)
     println("Starting OPF Computation")
     println("Mode: $mode")
     println("Case: $caseID")
-    println("Method: $method")
+    println("Privacy Method: $method")
+    println("Encryption: $encryption_scheme")
     if mode == "distributed"
         println("Node ID: $node_id")
     end
     println("="^60)
+
+    # Route to encryption-specific implementation if needed
+    if encryption_scheme != "none"
+        return run_opf_encrypted(config, encryption_scheme)
+    end
 
     # load data
     (gen,bus,line,B,refbus)=load_data(caseID)
