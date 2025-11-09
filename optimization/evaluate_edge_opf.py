@@ -55,11 +55,19 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from julia_wrapper import JuliaOPFExecutor
+    from julia_wrapper import JuliaOPFExecutor, JuliaConfig
     logger.info("[INIT]   ✓ JuliaOPFExecutor imported")
 except ImportError as e:
     logger.error(f"[INIT]   ✗ Failed to import JuliaOPFExecutor: {e}")
     logger.error("[INIT]   Check that edge/julia_wrapper.py exists")
+    sys.exit(1)
+
+try:
+    from edgesimpy.edge_server import ServerSpecs
+    logger.info("[INIT]   ✓ ServerSpecs imported")
+except ImportError as e:
+    logger.error(f"[INIT]   ✗ Failed to import ServerSpecs: {e}")
+    logger.error("[INIT]   Check that edge/edgesimpy/edge_server.py exists")
     sys.exit(1)
 
 try:
@@ -217,38 +225,44 @@ def run_distributed(config):
         # Setup edge infrastructure
         logger.info("[DIST] Step 2: Setting up edge infrastructure...")
         edge_infra = config['edge_infrastructure']
-        server_specs = edge_infra['server_specs']
-        network_specs = edge_infra['network']
+        server_cfg = edge_infra['server_specs']
 
         logger.info(f"[DIST]   Number of servers: {edge_infra['num_servers']}")
-        logger.info(f"[DIST]   Server specs: {server_specs['cpu_cores']} cores, {server_specs['memory_gb']} GB RAM")
-        logger.info(f"[DIST]   Network: {network_specs['bandwidth_mbps']} Mbps, {network_specs['latency_ms']} ms latency")
+        logger.info(f"[DIST]   Server specs: {server_cfg['cpu_cores']} cores, {server_cfg['memory_gb']} GB RAM")
 
+        # Create ServerSpecs object
+        server_specs = ServerSpecs(
+            cpu_cores=server_cfg['cpu_cores'],
+            cpu_freq_ghz=server_cfg['cpu_freq_ghz'],
+            memory_gb=server_cfg['memory_gb'],
+            storage_gb=server_cfg['storage_gb'],
+            power_idle_w=server_cfg['power_idle_w'],
+            power_max_w=server_cfg['power_max_w']
+        )
+
+        # Get case file from OPF config
+        opf_cfg = config['opf_config']
+        case_file = opf_cfg['caseID']
+
+        logger.info(f"[DIST]   Case file: {case_file}")
+
+        # Setup edge infrastructure with case file for topology
         simulator.setup_edge_infrastructure(
             num_servers=edge_infra['num_servers'],
-            server_cpu_cores=server_specs['cpu_cores'],
-            server_cpu_freq_ghz=server_specs['cpu_freq_ghz'],
-            server_memory_gb=server_specs['memory_gb'],
-            server_storage_gb=server_specs['storage_gb'],
-            server_power_idle_w=server_specs['power_idle_w'],
-            server_power_max_w=server_specs['power_max_w'],
-            network_bandwidth_mbps=network_specs['bandwidth_mbps'],
-            network_latency_ms=network_specs['latency_ms']
+            server_specs=server_specs,
+            case_file=case_file
         )
         logger.info("[DIST]   ✓ Edge infrastructure configured")
 
         # Setup Julia configuration
         logger.info("[DIST] Step 3: Setting up Julia OPF configuration...")
-        from julia_wrapper import JuliaConfig
-        opf_cfg = config['opf_config']
 
-        logger.info(f"[DIST]   Case: {opf_cfg['caseID']}")
         logger.info(f"[DIST]   Max iterations: {opf_cfg['max_iterations']}")
         logger.info(f"[DIST]   Privacy method: {opf_cfg['method']}")
 
         julia_config = JuliaConfig(
             node_id=1,  # Will be overridden for each node
-            caseID=opf_cfg['caseID'],
+            caseID=case_file,
             max_iterations=opf_cfg['max_iterations'],
             rho=opf_cfg['rho'],
             tolerance=opf_cfg['tolerance'],
