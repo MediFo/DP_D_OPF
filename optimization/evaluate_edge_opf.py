@@ -332,7 +332,7 @@ def run_encrypted(config, scheme):
 
         # Map scheme to Julia script
         script_map = {
-            'paillier': 'opt_main_verified.jl',
+            'paillier': 'opt_main.jl',  # Original DP_D_OPF formulation with Paillier
             'bgv': 'opt_main_bgv.jl',
             'ckks': 'opt_main_ckks.jl',
         }

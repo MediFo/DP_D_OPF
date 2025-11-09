@@ -60,7 +60,7 @@ function main()
 
     # Map scheme to corresponding script
     script_map = Dict(
-        "paillier" => "opt_main_verified.jl",
+        "paillier" => "opt_main.jl",  # Original DP_D_OPF formulation with Paillier
         "bgv" => "opt_main_bgv.jl",
         "ckks" => "opt_main_ckks.jl"
     )
