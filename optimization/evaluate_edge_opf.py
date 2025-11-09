@@ -372,6 +372,8 @@ def run_encrypted(config, scheme):
             ['julia', script],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',  # Replace invalid chars instead of crashing
             timeout=3600  # 1 hour timeout
         )
 

@@ -162,6 +162,8 @@ class JuliaOPFExecutor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                encoding='utf-8',
+                errors='replace',  # Replace invalid chars instead of crashing
                 cwd=str(self.base_dir)
             )
 
@@ -243,6 +245,8 @@ class JuliaOPFExecutor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                encoding='utf-8',
+                errors='replace',  # Replace invalid chars instead of crashing
                 cwd=str(self.base_dir)
             )
 
