@@ -353,7 +353,14 @@ def run_encrypted(config, scheme):
         # Check if Julia is available
         logger.info(f"[ENC] Step 3: Checking Julia installation...")
         try:
-            julia_version = subprocess.run(['julia', '--version'], capture_output=True, text=True, timeout=5)
+            julia_version = subprocess.run(
+                ['julia', '--version'],
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                errors='replace',  # Replace invalid characters instead of crashing
+                timeout=5
+            )
             logger.info(f"[ENC]   ✓ Julia found: {julia_version.stdout.strip()}")
         except FileNotFoundError:
             logger.error(f"[ENC]   ✗ Julia not found in PATH")
@@ -367,11 +374,13 @@ def run_encrypted(config, scheme):
         logger.info(f"[ENC]   Timeout: 3600 seconds (1 hour)")
         logger.info("-" * 80 + "\n")
 
-        # Run Julia script
+        # Run Julia script with UTF-8 encoding (fixes Windows encoding issues)
         result = subprocess.run(
             ['julia', script],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',  # Replace invalid characters instead of crashing
             timeout=3600  # 1 hour timeout
         )
 
