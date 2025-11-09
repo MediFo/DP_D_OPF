@@ -406,6 +406,29 @@ class ResultsExporter:
                 f"{prefix}_combined_percentile_bands.png"
             )
 
+        # TIME-SERIES PLOTS (percentile bands over iterations)
+
+        # Plot 18a: Power consumption over time
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_power_over_time(
+                results['node_results'],
+                f"{prefix}_power_over_time.png"
+            )
+
+        # Plot 18b: Energy consumption over time
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_energy_over_time(
+                results['node_results'],
+                f"{prefix}_energy_over_time.png"
+            )
+
+        # Plot 18c: Network efficiency over time
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_network_efficiency_over_time(
+                results['node_results'],
+                f"{prefix}_network_efficiency_over_time.png"
+            )
+
         # 5 CREATIVE NETWORK TRAFFIC PLOTS
 
         # Plot 19: Network traffic heatmap over time
@@ -2227,6 +2250,177 @@ class ResultsExporter:
         plt.close()
 
         print(f"  - Saved network swarm plots to {filename}")
+
+    def _plot_power_over_time(self, node_results: List[Dict], filename: str):
+        """Plot power consumption percentile bands over time (based on CPU usage)"""
+        # Collect power time series (calculated from CPU usage)
+        power_series = []
+
+        for result in node_results:
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'cpu_history' in monitoring:
+                    cpu_history = monitoring['cpu_history']
+                    # Estimate power from CPU: P(W) = base_power + (cpu% * tdp_factor)
+                    # Typical edge device: 5W base + CPU% * 0.15 (assuming ~20W TDP)
+                    base_power = 5.0
+                    tdp_factor = 0.15
+                    power_history = [base_power + (cpu * tdp_factor) for cpu in cpu_history]
+                    power_series.append(power_history)
+
+        if not power_series:
+            print("  - No time series data for power over time")
+            return
+
+        # Align lengths
+        max_len = max(len(s) for s in power_series)
+        for i in range(len(power_series)):
+            while len(power_series[i]) < max_len:
+                power_series[i].append(power_series[i][-1] if power_series[i] else 5.0)
+
+        power_array = np.array(power_series)
+
+        # Calculate percentiles at each time step
+        time_steps = range(max_len)
+        p10 = np.percentile(power_array, 10, axis=0)
+        p25 = np.percentile(power_array, 25, axis=0)
+        p50 = np.percentile(power_array, 50, axis=0)
+        p75 = np.percentile(power_array, 75, axis=0)
+        p90 = np.percentile(power_array, 90, axis=0)
+
+        fig, ax = plt.subplots(figsize=(14, 6))
+        fig.suptitle('Power Consumption Percentile Bands Over Time (Aggregated View)',
+                    fontsize=16, fontweight='bold')
+
+        ax.fill_between(time_steps, p10, p90, alpha=0.2, color='gold', label='10th-90th percentile')
+        ax.fill_between(time_steps, p25, p75, alpha=0.4, color='gold', label='25th-75th percentile')
+        ax.plot(time_steps, p50, linewidth=2.5, color='darkorange', label='Median (50th)', zorder=5)
+
+        ax.set_xlabel('Time Step (Iteration)', fontsize=12)
+        ax.set_ylabel('Power (W)', fontsize=12)
+        ax.set_title(f'Power Distribution Across {len(power_series)} Devices Over Time', fontsize=13)
+        ax.legend(loc='upper right')
+        ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved power over time plot to {filename}")
+
+    def _plot_energy_over_time(self, node_results: List[Dict], filename: str):
+        """Plot cumulative energy consumption percentile bands over time"""
+        # Collect energy time series (cumulative power over time)
+        energy_series = []
+
+        for result in node_results:
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'cpu_history' in monitoring and 'timestamps' in monitoring:
+                    cpu_history = monitoring['cpu_history']
+                    timestamps = monitoring['timestamps']
+
+                    # Calculate instantaneous power from CPU
+                    base_power = 5.0
+                    tdp_factor = 0.15
+                    power_history = [base_power + (cpu * tdp_factor) for cpu in cpu_history]
+
+                    # Calculate cumulative energy (integrate power over time)
+                    # Energy (Wh) = cumulative sum of (Power * time_delta) / 3600
+                    energy_history = [0]
+                    for i in range(1, len(power_history)):
+                        dt = timestamps[i] - timestamps[i-1] if i < len(timestamps) else 0.1
+                        energy_increment = power_history[i] * dt / 3600.0  # Convert to Wh
+                        energy_history.append(energy_history[-1] + energy_increment)
+
+                    energy_series.append(energy_history)
+
+        if not energy_series:
+            print("  - No time series data for energy over time")
+            return
+
+        # Align lengths
+        max_len = max(len(s) for s in energy_series)
+        for i in range(len(energy_series)):
+            while len(energy_series[i]) < max_len:
+                energy_series[i].append(energy_series[i][-1] if energy_series[i] else 0)
+
+        energy_array = np.array(energy_series)
+
+        # Calculate percentiles at each time step
+        time_steps = range(max_len)
+        p10 = np.percentile(energy_array, 10, axis=0)
+        p25 = np.percentile(energy_array, 25, axis=0)
+        p50 = np.percentile(energy_array, 50, axis=0)
+        p75 = np.percentile(energy_array, 75, axis=0)
+        p90 = np.percentile(energy_array, 90, axis=0)
+
+        fig, ax = plt.subplots(figsize=(14, 6))
+        fig.suptitle('Cumulative Energy Consumption Percentile Bands Over Time (Aggregated View)',
+                    fontsize=16, fontweight='bold')
+
+        ax.fill_between(time_steps, p10, p90, alpha=0.2, color='limegreen', label='10th-90th percentile')
+        ax.fill_between(time_steps, p25, p75, alpha=0.4, color='limegreen', label='25th-75th percentile')
+        ax.plot(time_steps, p50, linewidth=2.5, color='darkgreen', label='Median (50th)', zorder=5)
+
+        ax.set_xlabel('Time Step (Iteration)', fontsize=12)
+        ax.set_ylabel('Cumulative Energy (Wh)', fontsize=12)
+        ax.set_title(f'Energy Accumulation Across {len(energy_series)} Devices Over Time', fontsize=13)
+        ax.legend(loc='upper left')
+        ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved energy over time plot to {filename}")
+
+    def _plot_network_efficiency_over_time(self, node_results: List[Dict], filename: str):
+        """Plot network efficiency metrics over time (if available in iteration data)"""
+        # Note: This requires per-iteration network monitoring data
+        # For now, we'll create a placeholder that shows what it would look like
+        # In a full implementation, this would use actual link statistics per iteration
+
+        # Check if we have any network data
+        network_data_available = False
+        for result in node_results:
+            if 'network_stats' in result:  # This field might not exist yet
+                network_data_available = True
+                break
+
+        if not network_data_available:
+            # Create informational plot
+            fig, ax = plt.subplots(figsize=(14, 6))
+            fig.suptitle('Network Efficiency Over Time - Data Not Available',
+                        fontsize=16, fontweight='bold')
+
+            ax.text(0.5, 0.5,
+                   'Network efficiency time-series requires per-iteration link monitoring.\n\n'
+                   'To enable this plot:\n'
+                   '1. Add network_stats tracking to each OPF iteration\n'
+                   '2. Capture bandwidth, latency, and data transmitted per timestep\n'
+                   '3. Calculate efficiency = data_transmitted / (bandwidth * latency)\n\n'
+                   'Currently showing aggregate network efficiency in other plots.',
+                   ha='center', va='center', fontsize=14,
+                   bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.8))
+
+            ax.set_xlim([0, 1])
+            ax.set_ylim([0, 1])
+            ax.axis('off')
+
+            plt.tight_layout()
+            filepath = self.plots_dir / filename
+            plt.savefig(filepath, dpi=300, bbox_inches='tight')
+            plt.close()
+
+            print(f"  - Saved network efficiency over time placeholder to {filename}")
+            print("    Note: Requires per-iteration network monitoring data")
+            return
+
+        # If network data is available, plot it
+        # (Implementation would go here when data structure is available)
 
 
 # Test execution
