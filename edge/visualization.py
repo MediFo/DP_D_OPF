@@ -2378,52 +2378,57 @@ class ResultsExporter:
         print(f"  - Saved energy over time plot to {filename}")
 
     def _plot_network_efficiency_over_time(self, links: Dict, filename: str):
-        """Plot network efficiency analysis using link statistics"""
+        """Plot network efficiency percentile bands over time (time-series)"""
         if not links:
-            print("  - No network links for efficiency analysis")
+            print("  - No network links for efficiency over time")
             return
 
-        # Collect link efficiency metrics
-        link_data = []
+        # Collect transmission history from all links
+        all_link_series = []
+
         for lid, stats in links.items():
-            src = stats.get('source_server_id', '?')
-            tgt = stats.get('target_server_id', '?')
+            trans_history = stats.get('transmission_history', [])
             bw = stats.get('bandwidth_mbps', 0)
             lat = stats.get('latency_ms', 0)
-            total_data = stats.get('total_data_transmitted_mb', 0)
-            num_trans = stats.get('num_transmissions', 0)
 
-            if num_trans > 0 and bw > 0 and lat > 0:
-                # Calculate efficiency metrics
-                avg_data_per_trans = total_data / num_trans
-                # Efficiency = data throughput relative to capacity
-                # Higher value = better efficiency
-                efficiency = (avg_data_per_trans * 1000) / (bw * lat) if (bw * lat) > 0 else 0
-                utilization = (total_data / bw) * 100 if bw > 0 else 0
+            if not trans_history or bw == 0 or lat == 0:
+                continue
 
-                link_data.append({
-                    'link': f"{src}→{tgt}",
-                    'efficiency': efficiency,
-                    'utilization': min(utilization, 100),
-                    'bandwidth': bw,
-                    'latency': lat,
-                    'data': total_data,
-                    'num_trans': num_trans
-                })
+            # Create time series for this link
+            timestamps = [t['timestamp'] for t in trans_history]
+            data_sizes = [t['data_mb'] for t in trans_history]
 
-        if not link_data:
-            # No active transmissions
+            # Calculate efficiency at each transmission
+            # Efficiency = throughput / latency = (data_mb / transmission_time) / latency
+            efficiencies = []
+            for t in trans_history:
+                data_mb = t['data_mb']
+                trans_time_s = t['transmission_time_s']
+                # Throughput in Mbps = (data_mb * 8) / trans_time_s
+                throughput_mbps = (data_mb * 8) / trans_time_s if trans_time_s > 0 else 0
+                # Efficiency = throughput / latency (higher is better)
+                efficiency = throughput_mbps / lat if lat > 0 else 0
+                efficiencies.append(efficiency)
+
+            all_link_series.append({
+                'timestamps': timestamps,
+                'efficiencies': efficiencies,
+                'link_id': lid
+            })
+
+        if not all_link_series:
+            # No transmission data
             fig, ax = plt.subplots(figsize=(14, 6))
-            fig.suptitle('Network Efficiency Analysis - No Transmission Data',
+            fig.suptitle('Network Efficiency Over Time - No Transmission Data',
                         fontsize=16, fontweight='bold')
 
             ax.text(0.5, 0.5,
                    'No network transmissions recorded during this simulation.\n\n'
                    'This can happen when:\n'
                    '• Simulation ran in centralized mode (no inter-device communication)\n'
-                   '• All computations completed locally without data exchange\n'
-                   '• Network monitoring was not enabled\n\n'
-                   'For distributed simulations, check other network plots for link statistics.',
+                   '• All computations completed locally without data exchange\n\n'
+                   'For distributed simulations with network activity, this plot will show\n'
+                   'network efficiency percentile bands over time (like the CPU/Power plots).',
                    ha='center', va='center', fontsize=14,
                    bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.8))
 
@@ -2436,75 +2441,76 @@ class ResultsExporter:
             plt.savefig(filepath, dpi=300, bbox_inches='tight')
             plt.close()
 
-            print(f"  - Saved network efficiency analysis (no data) to {filename}")
+            print(f"  - Saved network efficiency over time (no data) to {filename}")
             return
 
-        # Create comprehensive efficiency analysis
-        import pandas as pd
-        df = pd.DataFrame(link_data)
+        # Find global time range
+        all_timestamps = []
+        for series in all_link_series:
+            all_timestamps.extend(series['timestamps'])
 
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        fig.suptitle(f'Network Efficiency Analysis ({len(link_data)} active links)',
+        if not all_timestamps:
+            print("  - No timestamps in transmission history")
+            return
+
+        min_time = min(all_timestamps)
+        max_time = max(all_timestamps)
+
+        # Create time buckets
+        num_buckets = 100  # 100 time steps for smooth visualization
+        time_step = (max_time - min_time) / num_buckets if max_time > min_time else 1.0
+        time_buckets = [min_time + i * time_step for i in range(num_buckets + 1)]
+
+        # For each link, create efficiency time series aligned to buckets
+        efficiency_matrix = []
+
+        for series in all_link_series:
+            timestamps = series['timestamps']
+            efficiencies = series['efficiencies']
+
+            # Map efficiencies to time buckets
+            bucket_efficiencies = [0.0] * num_buckets
+
+            for ts, eff in zip(timestamps, efficiencies):
+                # Find which bucket this timestamp belongs to
+                bucket_idx = int((ts - min_time) / time_step) if time_step > 0 else 0
+                bucket_idx = min(bucket_idx, num_buckets - 1)
+                bucket_efficiencies[bucket_idx] = eff  # Use latest efficiency in bucket
+
+            efficiency_matrix.append(bucket_efficiencies)
+
+        # Convert to numpy array for percentile calculation
+        efficiency_array = np.array(efficiency_matrix)
+
+        # Calculate percentiles at each time step
+        p10 = np.percentile(efficiency_array, 10, axis=0)
+        p25 = np.percentile(efficiency_array, 25, axis=0)
+        p50 = np.percentile(efficiency_array, 50, axis=0)
+        p75 = np.percentile(efficiency_array, 75, axis=0)
+        p90 = np.percentile(efficiency_array, 90, axis=0)
+
+        # Create plot
+        fig, ax = plt.subplots(figsize=(14, 6))
+        fig.suptitle('Network Efficiency Percentile Bands Over Time (Aggregated View)',
                     fontsize=16, fontweight='bold')
 
-        # 1. Efficiency distribution
-        ax = axes[0, 0]
-        efficiencies = df['efficiency'].values
-        ax.hist(efficiencies, bins=15, color='limegreen', edgecolor='black', alpha=0.7)
-        ax.axvline(np.mean(efficiencies), color='red', linestyle='--', linewidth=2,
-                  label=f'Mean: {np.mean(efficiencies):.4f}')
-        ax.axvline(np.median(efficiencies), color='darkblue', linestyle='--', linewidth=2,
-                  label=f'Median: {np.median(efficiencies):.4f}')
-        ax.set_xlabel('Efficiency (MB/(Mbps·ms))', fontsize=12)
-        ax.set_ylabel('Frequency (Count)', fontsize=12)
-        ax.set_title('Network Efficiency Distribution', fontsize=13)
-        ax.legend()
-        ax.grid(True, alpha=0.3, axis='y')
+        time_steps = range(num_buckets)
+        ax.fill_between(time_steps, p10, p90, alpha=0.2, color='purple', label='10th-90th percentile')
+        ax.fill_between(time_steps, p25, p75, alpha=0.4, color='purple', label='25th-75th percentile')
+        ax.plot(time_steps, p50, linewidth=2.5, color='darkviolet', label='Median (50th)', zorder=5)
 
-        # 2. Efficiency vs Bandwidth (colored by utilization)
-        ax = axes[0, 1]
-        scatter = ax.scatter(df['bandwidth'], df['efficiency'], s=150, alpha=0.6,
-                           c=df['utilization'], cmap='RdYlGn', edgecolors='black', linewidths=1)
-        ax.set_xlabel('Bandwidth (Mbps)', fontsize=12)
-        ax.set_ylabel('Efficiency (MB/(Mbps·ms))', fontsize=12)
-        ax.set_title('Efficiency vs Bandwidth (color = utilization %)', fontsize=13)
+        ax.set_xlabel('Time Step (Network Transmission Events)', fontsize=12)
+        ax.set_ylabel('Network Efficiency (Mbps/ms)', fontsize=12)
+        ax.set_title(f'Network Efficiency Distribution Across {len(all_link_series)} Active Links Over Time', fontsize=13)
+        ax.legend(loc='upper right')
         ax.grid(True, alpha=0.3)
-        cbar = plt.colorbar(scatter, ax=ax)
-        cbar.set_label('Utilization (%)', fontsize=10)
-
-        # 3. Utilization distribution
-        ax = axes[1, 0]
-        utils = df['utilization'].values
-        ax.hist(utils, bins=15, color='dodgerblue', edgecolor='black', alpha=0.7)
-        ax.axvline(np.mean(utils), color='red', linestyle='--', linewidth=2,
-                  label=f'Mean: {np.mean(utils):.1f}%')
-        ax.set_xlabel('Link Utilization (%)', fontsize=12)
-        ax.set_ylabel('Frequency (Count)', fontsize=12)
-        ax.set_title('Link Utilization Distribution', fontsize=13)
-        ax.legend()
-        ax.grid(True, alpha=0.3, axis='y')
-
-        # 4. Per-link efficiency (sorted)
-        ax = axes[1, 1]
-        df_sorted = df.sort_values('efficiency', ascending=False)
-        x_pos = range(len(df_sorted))
-        colors_eff = plt.cm.RdYlGn((df_sorted['efficiency'] - df_sorted['efficiency'].min()) /
-                                   (df_sorted['efficiency'].max() - df_sorted['efficiency'].min() + 0.001))
-        ax.bar(x_pos, df_sorted['efficiency'], color=colors_eff, edgecolor='black', linewidth=0.5, alpha=0.8)
-        ax.set_xlabel('Links (sorted by efficiency)', fontsize=12)
-        ax.set_ylabel('Efficiency (MB/(Mbps·ms))', fontsize=12)
-        ax.set_title(f'Per-Link Efficiency - All {len(df_sorted)} Links', fontsize=13)
-        ax.axhline(np.mean(efficiencies), color='red', linestyle='--', linewidth=2,
-                  label=f'Mean: {np.mean(efficiencies):.4f}', alpha=0.7)
-        ax.legend()
-        ax.grid(True, alpha=0.3, axis='y')
 
         plt.tight_layout()
         filepath = self.plots_dir / filename
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
         plt.close()
 
-        print(f"  - Saved network efficiency analysis to {filename}")
+        print(f"  - Saved network efficiency over time plot to {filename}")
 
 
 # Test execution

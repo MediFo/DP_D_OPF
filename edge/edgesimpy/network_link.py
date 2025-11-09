@@ -91,7 +91,8 @@ class NetworkLink:
             'total_data_transmitted_mb': self.data_transmitted_mb,
             'num_transmissions': total_transmissions,
             'total_transmission_time_s': total_time,
-            'avg_transmission_time_s': total_time / total_transmissions if total_transmissions > 0 else 0
+            'avg_transmission_time_s': total_time / total_transmissions if total_transmissions > 0 else 0,
+            'transmission_history': self.transmission_history  # Add for time-series visualization
         }
 
     def __repr__(self):
