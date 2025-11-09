@@ -422,11 +422,11 @@ class ResultsExporter:
                 f"{prefix}_energy_over_time.png"
             )
 
-        # Plot 18c: Network efficiency over time
-        if 'node_results' in results and len(results['node_results']) > 0:
+        # Plot 18c: Network efficiency analysis
+        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
             self._plot_network_efficiency_over_time(
-                results['node_results'],
-                f"{prefix}_network_efficiency_over_time.png"
+                results['simulation_stats']['links'],
+                f"{prefix}_network_efficiency_analysis.png"
             )
 
         # 5 CREATIVE NETWORK TRAFFIC PLOTS
@@ -2377,32 +2377,53 @@ class ResultsExporter:
 
         print(f"  - Saved energy over time plot to {filename}")
 
-    def _plot_network_efficiency_over_time(self, node_results: List[Dict], filename: str):
-        """Plot network efficiency metrics over time (if available in iteration data)"""
-        # Note: This requires per-iteration network monitoring data
-        # For now, we'll create a placeholder that shows what it would look like
-        # In a full implementation, this would use actual link statistics per iteration
+    def _plot_network_efficiency_over_time(self, links: Dict, filename: str):
+        """Plot network efficiency analysis using link statistics"""
+        if not links:
+            print("  - No network links for efficiency analysis")
+            return
 
-        # Check if we have any network data
-        network_data_available = False
-        for result in node_results:
-            if 'network_stats' in result:  # This field might not exist yet
-                network_data_available = True
-                break
+        # Collect link efficiency metrics
+        link_data = []
+        for lid, stats in links.items():
+            src = stats.get('source_server_id', '?')
+            tgt = stats.get('target_server_id', '?')
+            bw = stats.get('bandwidth_mbps', 0)
+            lat = stats.get('latency_ms', 0)
+            total_data = stats.get('total_data_transmitted_mb', 0)
+            num_trans = stats.get('num_transmissions', 0)
 
-        if not network_data_available:
-            # Create informational plot
+            if num_trans > 0 and bw > 0 and lat > 0:
+                # Calculate efficiency metrics
+                avg_data_per_trans = total_data / num_trans
+                # Efficiency = data throughput relative to capacity
+                # Higher value = better efficiency
+                efficiency = (avg_data_per_trans * 1000) / (bw * lat) if (bw * lat) > 0 else 0
+                utilization = (total_data / bw) * 100 if bw > 0 else 0
+
+                link_data.append({
+                    'link': f"{src}→{tgt}",
+                    'efficiency': efficiency,
+                    'utilization': min(utilization, 100),
+                    'bandwidth': bw,
+                    'latency': lat,
+                    'data': total_data,
+                    'num_trans': num_trans
+                })
+
+        if not link_data:
+            # No active transmissions
             fig, ax = plt.subplots(figsize=(14, 6))
-            fig.suptitle('Network Efficiency Over Time - Data Not Available',
+            fig.suptitle('Network Efficiency Analysis - No Transmission Data',
                         fontsize=16, fontweight='bold')
 
             ax.text(0.5, 0.5,
-                   'Network efficiency time-series requires per-iteration link monitoring.\n\n'
-                   'To enable this plot:\n'
-                   '1. Add network_stats tracking to each OPF iteration\n'
-                   '2. Capture bandwidth, latency, and data transmitted per timestep\n'
-                   '3. Calculate efficiency = data_transmitted / (bandwidth * latency)\n\n'
-                   'Currently showing aggregate network efficiency in other plots.',
+                   'No network transmissions recorded during this simulation.\n\n'
+                   'This can happen when:\n'
+                   '• Simulation ran in centralized mode (no inter-device communication)\n'
+                   '• All computations completed locally without data exchange\n'
+                   '• Network monitoring was not enabled\n\n'
+                   'For distributed simulations, check other network plots for link statistics.',
                    ha='center', va='center', fontsize=14,
                    bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.8))
 
@@ -2415,12 +2436,75 @@ class ResultsExporter:
             plt.savefig(filepath, dpi=300, bbox_inches='tight')
             plt.close()
 
-            print(f"  - Saved network efficiency over time placeholder to {filename}")
-            print("    Note: Requires per-iteration network monitoring data")
+            print(f"  - Saved network efficiency analysis (no data) to {filename}")
             return
 
-        # If network data is available, plot it
-        # (Implementation would go here when data structure is available)
+        # Create comprehensive efficiency analysis
+        import pandas as pd
+        df = pd.DataFrame(link_data)
+
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle(f'Network Efficiency Analysis ({len(link_data)} active links)',
+                    fontsize=16, fontweight='bold')
+
+        # 1. Efficiency distribution
+        ax = axes[0, 0]
+        efficiencies = df['efficiency'].values
+        ax.hist(efficiencies, bins=15, color='limegreen', edgecolor='black', alpha=0.7)
+        ax.axvline(np.mean(efficiencies), color='red', linestyle='--', linewidth=2,
+                  label=f'Mean: {np.mean(efficiencies):.4f}')
+        ax.axvline(np.median(efficiencies), color='darkblue', linestyle='--', linewidth=2,
+                  label=f'Median: {np.median(efficiencies):.4f}')
+        ax.set_xlabel('Efficiency (MB/(Mbps·ms))', fontsize=12)
+        ax.set_ylabel('Frequency (Count)', fontsize=12)
+        ax.set_title('Network Efficiency Distribution', fontsize=13)
+        ax.legend()
+        ax.grid(True, alpha=0.3, axis='y')
+
+        # 2. Efficiency vs Bandwidth (colored by utilization)
+        ax = axes[0, 1]
+        scatter = ax.scatter(df['bandwidth'], df['efficiency'], s=150, alpha=0.6,
+                           c=df['utilization'], cmap='RdYlGn', edgecolors='black', linewidths=1)
+        ax.set_xlabel('Bandwidth (Mbps)', fontsize=12)
+        ax.set_ylabel('Efficiency (MB/(Mbps·ms))', fontsize=12)
+        ax.set_title('Efficiency vs Bandwidth (color = utilization %)', fontsize=13)
+        ax.grid(True, alpha=0.3)
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label('Utilization (%)', fontsize=10)
+
+        # 3. Utilization distribution
+        ax = axes[1, 0]
+        utils = df['utilization'].values
+        ax.hist(utils, bins=15, color='dodgerblue', edgecolor='black', alpha=0.7)
+        ax.axvline(np.mean(utils), color='red', linestyle='--', linewidth=2,
+                  label=f'Mean: {np.mean(utils):.1f}%')
+        ax.set_xlabel('Link Utilization (%)', fontsize=12)
+        ax.set_ylabel('Frequency (Count)', fontsize=12)
+        ax.set_title('Link Utilization Distribution', fontsize=13)
+        ax.legend()
+        ax.grid(True, alpha=0.3, axis='y')
+
+        # 4. Per-link efficiency (sorted)
+        ax = axes[1, 1]
+        df_sorted = df.sort_values('efficiency', ascending=False)
+        x_pos = range(len(df_sorted))
+        colors_eff = plt.cm.RdYlGn((df_sorted['efficiency'] - df_sorted['efficiency'].min()) /
+                                   (df_sorted['efficiency'].max() - df_sorted['efficiency'].min() + 0.001))
+        ax.bar(x_pos, df_sorted['efficiency'], color=colors_eff, edgecolor='black', linewidth=0.5, alpha=0.8)
+        ax.set_xlabel('Links (sorted by efficiency)', fontsize=12)
+        ax.set_ylabel('Efficiency (MB/(Mbps·ms))', fontsize=12)
+        ax.set_title(f'Per-Link Efficiency - All {len(df_sorted)} Links', fontsize=13)
+        ax.axhline(np.mean(efficiencies), color='red', linestyle='--', linewidth=2,
+                  label=f'Mean: {np.mean(efficiencies):.4f}', alpha=0.7)
+        ax.legend()
+        ax.grid(True, alpha=0.3, axis='y')
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved network efficiency analysis to {filename}")
 
 
 # Test execution
