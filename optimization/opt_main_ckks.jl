@@ -349,6 +349,11 @@ total_opt_time = 0.0
 total_crypto_time = 0.0
 total_other_time = 0.0
 
+# Track iteration timestamps (cumulative time from start)
+admm_start_time = time()
+iteration_times = Float64[]  # Duration of each iteration
+iteration_timestamps = Float64[]  # Cumulative time from ADMM start
+
 # Storage for sparse θ
 θ_sparse = Dict{Tuple{Int,Int}, Float64}()
 
@@ -391,6 +396,12 @@ for ν in 2:ν̅
     # ═══════════════════════════════════════════════════════════════════════
 
     iter_time = time() - iter_start
+    cumulative_time = time() - admm_start_time  # Elapsed time from ADMM start
+
+    # Record timing data
+    push!(iteration_times, iter_time)
+    push!(iteration_timestamps, cumulative_time)
+
     total_opt_time += opt_time
     total_crypto_time += crypto_time
     total_other_time += other_time
@@ -485,3 +496,52 @@ println()
 println("\n" * "="^80)
 println(" ✅ OPTIMIZED ADMM COMPLETED SUCCESSFULLY")
 println("="^80 * "\n")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RETURN RESULTS DICTIONARY (for edge simulation integration)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Create results dictionary compatible with edge simulation framework
+results = Dict(
+    "mode" => "encrypted_ckks",
+    "encryption_scheme" => "ckks",
+    "total_time_s" => total_time,
+    "iterations" => final_iter,
+    "avg_iteration_time_ms" => avg_total * 1000,
+    "centralized_cost" => cost_c,
+    "final_cost" => cost_history[final_iter],
+    "optimality_loss_percent" => cost_pct,
+    "final_residual" => residuals[final_iter],
+    "converged" => converged,
+
+    # Timing breakdown
+    "total_opt_time_s" => total_opt_time,
+    "total_crypto_time_s" => total_crypto_time,
+    "total_other_time_s" => total_other_time,
+    "pct_opt" => pct_opt,
+    "pct_crypto" => pct_crypto,
+    "pct_other" => pct_other,
+
+    # Per-iteration data (truncated to final_iter)
+    "iteration_times" => iteration_times[1:final_iter-1],  # Duration of each iteration (seconds)
+    "iteration_timestamps" => iteration_timestamps[1:final_iter-1],  # Cumulative time (seconds)
+    "residuals" => residuals[2:final_iter],  # Residuals per iteration
+    "cost_history" => cost_history[2:final_iter],  # Cost per iteration
+
+    # Network info
+    "network_name" => network_name,
+    "num_buses" => Nb,
+    "num_generators" => Ng,
+    "num_lines" => length(line),
+    "sparse_vars" => sparse_vars,
+    "reduction_pct" => reduction_pct
+)
+
+# Save results to JSON (optional, for debugging)
+if !isdir("results")
+    mkdir("results")
+end
+open("results/ckks_results.json", "w") do f
+    JSON.print(f, results, 2)
+end
+println("📊 Results saved to: results/ckks_results.json\n")

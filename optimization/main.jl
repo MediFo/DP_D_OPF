@@ -110,7 +110,8 @@ function run_opf(config::Dict)
 
     # Track timing
     start_time = time()
-    iteration_times = Float64[]
+    iteration_times = Float64[]  # Duration of each iteration
+    iteration_timestamps = Float64[]  # Cumulative timestamp (elapsed time from start)
     residuals = Float64[]
 
     # solve the centralized OPF problem
@@ -164,7 +165,9 @@ function run_opf(config::Dict)
         end
 
         iter_time = time() - iter_start
+        cumulative_time = time() - start_time  # Elapsed time from start
         push!(iteration_times, iter_time)
+        push!(iteration_timestamps, cumulative_time)
         push!(residuals, Γ)
 
         ν % 100 == 0 ? println("ν --- $(ν) ... res --- $(round(Γ,digits=5)) ... time --- $(round(iter_time*1000, digits=2))ms") : NaN
@@ -217,7 +220,8 @@ function run_opf(config::Dict)
         "final_cost" => cost[1],
         "optimality_loss_percent" => abs(cost_c-cost[1])/cost_c*100,
         "final_residual" => residuals[end],
-        "iteration_times" => iteration_times,
+        "iteration_times" => iteration_times,  # Duration of each iteration (seconds)
+        "iteration_timestamps" => iteration_timestamps,  # Cumulative time for each iteration (seconds)
         "residuals" => residuals,
         "config" => config
     )

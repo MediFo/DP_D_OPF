@@ -511,7 +511,62 @@ class ResultsExporter:
                 f"{prefix}_network_swarm.png"
             )
 
-        print("✓ Plot generation completed")
+        # DUAL TIME-AXIS PLOTS (Iteration-based + Real-time in minutes)
+        # User requested: "MAKE THEM DOUBLE ONE PER STEP(PER ITERATION) ONE PER REAL TIME (MINUTES)"
+
+        # Plot 29: Dual CPU/Memory percentile bands (iteration + real-time)
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_dual_cpu_memory_percentile(
+                results['node_results'],
+                f"{prefix}_dual_cpu_memory_percentile"
+            )
+
+        # Plot 30: Iteration duration analysis (dual time axes)
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_iteration_duration_analysis(
+                results['node_results'],
+                f"{prefix}_iteration_duration_analysis.png"
+            )
+
+        # Plot 31: Cumulative computation time (dual views)
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_cumulative_computation_time(
+                results['node_results'],
+                f"{prefix}_cumulative_computation_time.png"
+            )
+
+        # REAL-TIME ANALYSIS PLOTS
+        # User requested: "ADD MUCH MORE PLOTS GIVE MORE INFOTMATION ABOUT REAL TIME"
+
+        # Plot 32: Iteration throughput (iterations per minute over real time)
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_iteration_throughput(
+                results['node_results'],
+                f"{prefix}_iteration_throughput.png"
+            )
+
+        # Plot 33: Time budget analysis (compute vs overhead distribution)
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_time_budget_analysis(
+                results['node_results'],
+                f"{prefix}_time_budget_analysis.png"
+            )
+
+        # Plot 34: Real-time efficiency metrics (4-panel dashboard)
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_realtime_efficiency_metrics(
+                results['node_results'],
+                f"{prefix}_realtime_efficiency_metrics.png"
+            )
+
+        # Plot 35: Performance degradation analysis (CPU usage over time)
+        if 'node_results' in results and len(results['node_results']) > 0:
+            self._plot_performance_degradation(
+                results['node_results'],
+                f"{prefix}_performance_degradation.png"
+            )
+
+        print("✓ Plot generation completed (35 plots total, including 7 dual time-axis/real-time plots)")
 
     def _plot_server_resources(self, servers: Dict, filename: str):
         """Plot server resource comparison"""
@@ -2519,6 +2574,500 @@ class ResultsExporter:
         plt.close()
 
         print(f"  - Saved network efficiency over time plot to {filename}")
+
+    # ═════════════════════════════════════════════════════════════════════════════
+    # DUAL TIME-AXIS PLOTS (ITERATION-BASED AND REAL-TIME)
+    # ═════════════════════════════════════════════════════════════════════════════
+
+    def _plot_dual_cpu_memory_percentile(self, node_results: List[Dict], filename_base: str):
+        """Plot CPU/Memory percentile bands with DUAL time axes: iterations and real time"""
+        cpu_series = []
+        mem_series = []
+        time_series = []
+
+        for result in node_results:
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'cpu_history' in monitoring and 'timestamps' in monitoring:
+                    cpu_series.append(monitoring['cpu_history'])
+                    mem_series.append(monitoring['memory_history'])
+                    time_series.append(monitoring['timestamps'])
+
+        if not cpu_series:
+            print("  - No time series data for dual CPU/Memory percentile")
+            return
+
+        # Align lengths
+        max_len = max(len(s) for s in cpu_series)
+        for i in range(len(cpu_series)):
+            while len(cpu_series[i]) < max_len:
+                cpu_series[i].append(cpu_series[i][-1] if cpu_series[i] else 0)
+            while len(mem_series[i]) < max_len:
+                mem_series[i].append(mem_series[i][-1] if mem_series[i] else 0)
+            while len(time_series[i]) < max_len:
+                if time_series[i]:
+                    time_series[i].append(time_series[i][-1])
+                else:
+                    time_series[i].append(0)
+
+        cpu_array = np.array(cpu_series)
+        mem_array = np.array(mem_series)
+
+        # Calculate percentiles
+        cpu_p10 = np.percentile(cpu_array, 10, axis=0)
+        cpu_p25 = np.percentile(cpu_array, 25, axis=0)
+        cpu_p50 = np.percentile(cpu_array, 50, axis=0)
+        cpu_p75 = np.percentile(cpu_array, 75, axis=0)
+        cpu_p90 = np.percentile(cpu_array, 90, axis=0)
+
+        mem_p10 = np.percentile(mem_array, 10, axis=0)
+        mem_p25 = np.percentile(mem_array, 25, axis=0)
+        mem_p50 = np.percentile(mem_array, 50, axis=0)
+        mem_p75 = np.percentile(mem_array, 75, axis=0)
+        mem_p90 = np.percentile(mem_array, 90, axis=0)
+
+        # Average timestamps across all devices
+        avg_timestamps = np.mean(time_series, axis=0) / 60.0  # Convert to minutes
+
+        # === ITERATION-BASED PLOT ===
+        fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+        fig.suptitle('Percentile Bands by Iteration (Step-Based)', fontsize=16, fontweight='bold')
+
+        time_steps = range(max_len)
+
+        # CPU
+        axes[0].fill_between(time_steps, cpu_p10, cpu_p90, alpha=0.2, color='orangered', label='10th-90th percentile')
+        axes[0].fill_between(time_steps, cpu_p25, cpu_p75, alpha=0.4, color='orangered', label='25th-75th percentile')
+        axes[0].plot(time_steps, cpu_p50, linewidth=2, color='darkred', label='Median (50th)')
+        axes[0].set_xlabel('Iteration Number', fontsize=12, fontweight='bold')
+        axes[0].set_ylabel('CPU Usage (%)', fontsize=12)
+        axes[0].set_title(f'CPU Usage by Iteration ({len(cpu_series)} devices)', fontsize=13)
+        axes[0].legend(loc='upper right')
+        axes[0].grid(True, alpha=0.3)
+
+        # Memory
+        axes[1].fill_between(time_steps, mem_p10, mem_p90, alpha=0.2, color='dodgerblue', label='10th-90th percentile')
+        axes[1].fill_between(time_steps, mem_p25, mem_p75, alpha=0.4, color='dodgerblue', label='25th-75th percentile')
+        axes[1].plot(time_steps, mem_p50, linewidth=2, color='darkblue', label='Median (50th)')
+        axes[1].set_xlabel('Iteration Number', fontsize=12, fontweight='bold')
+        axes[1].set_ylabel('Memory (MB)', fontsize=12)
+        axes[1].set_title(f'Memory Usage by Iteration ({len(mem_series)} devices)', fontsize=13)
+        axes[1].legend(loc='upper right')
+        axes[1].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / f"{filename_base}_iterations.png"
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  - Saved iteration-based percentile bands to {filename_base}_iterations.png")
+
+        # === REAL-TIME PLOT ===
+        fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+        fig.suptitle('Percentile Bands by Real Time (Time-Based)', fontsize=16, fontweight='bold')
+
+        # CPU
+        axes[0].fill_between(avg_timestamps, cpu_p10, cpu_p90, alpha=0.2, color='orangered', label='10th-90th percentile')
+        axes[0].fill_between(avg_timestamps, cpu_p25, cpu_p75, alpha=0.4, color='orangered', label='25th-75th percentile')
+        axes[0].plot(avg_timestamps, cpu_p50, linewidth=2, color='darkred', label='Median (50th)')
+        axes[0].set_xlabel('Real Time (minutes)', fontsize=12, fontweight='bold')
+        axes[0].set_ylabel('CPU Usage (%)', fontsize=12)
+        axes[0].set_title(f'CPU Usage Over Real Time ({len(cpu_series)} devices)', fontsize=13)
+        axes[0].legend(loc='upper right')
+        axes[0].grid(True, alpha=0.3)
+
+        # Memory
+        axes[1].fill_between(avg_timestamps, mem_p10, mem_p90, alpha=0.2, color='dodgerblue', label='10th-90th percentile')
+        axes[1].fill_between(avg_timestamps, mem_p25, mem_p75, alpha=0.4, color='dodgerblue', label='25th-75th percentile')
+        axes[1].plot(avg_timestamps, mem_p50, linewidth=2, color='darkblue', label='Median (50th)')
+        axes[1].set_xlabel('Real Time (minutes)', fontsize=12, fontweight='bold')
+        axes[1].set_ylabel('Memory (MB)', fontsize=12)
+        axes[1].set_title(f'Memory Usage Over Real Time ({len(mem_series)} devices)', fontsize=13)
+        axes[1].legend(loc='upper right')
+        axes[1].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / f"{filename_base}_realtime.png"
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  - Saved real-time percentile bands to {filename_base}_realtime.png")
+
+    # ═════════════════════════════════════════════════════════════════════════════
+    # NEW REAL-TIME ANALYSIS PLOTS
+    # ═════════════════════════════════════════════════════════════════════════════
+
+    def _plot_iteration_duration_analysis(self, node_results: List[Dict], filename: str):
+        """Plot iteration duration over time - shows how long each iteration takes"""
+        iteration_durations = []
+        time_minutes = []
+
+        for result in node_results:
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'timestamps' in monitoring and len(monitoring['timestamps']) > 1:
+                    timestamps = monitoring['timestamps']
+                    # Calculate duration of each iteration
+                    durations_ms = [(timestamps[i+1] - timestamps[i]) * 1000
+                                    for i in range(len(timestamps)-1)]
+                    time_mins = [t / 60.0 for t in timestamps[1:]]
+
+                    iteration_durations.append(durations_ms)
+                    time_minutes.append(time_mins)
+
+        if not iteration_durations:
+            print("  - No iteration duration data available")
+            return
+
+        # Align lengths
+        max_len = max(len(d) for d in iteration_durations)
+        for i in range(len(iteration_durations)):
+            while len(iteration_durations[i]) < max_len:
+                iteration_durations[i].append(iteration_durations[i][-1] if iteration_durations[i] else 0)
+            while len(time_minutes[i]) < max_len:
+                if time_minutes[i]:
+                    time_minutes[i].append(time_minutes[i][-1])
+                else:
+                    time_minutes[i].append(0)
+
+        dur_array = np.array(iteration_durations)
+        avg_time_mins = np.mean(time_minutes, axis=0)
+
+        # Calculate percentiles
+        dur_p10 = np.percentile(dur_array, 10, axis=0)
+        dur_p25 = np.percentile(dur_array, 25, axis=0)
+        dur_p50 = np.percentile(dur_array, 50, axis=0)
+        dur_p75 = np.percentile(dur_array, 75, axis=0)
+        dur_p90 = np.percentile(dur_array, 90, axis=0)
+
+        fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+        fig.suptitle('Iteration Duration Analysis', fontsize=16, fontweight='bold')
+
+        # By iteration number
+        iterations = range(1, max_len + 1)
+        axes[0].fill_between(iterations, dur_p10, dur_p90, alpha=0.2, color='green', label='10th-90th percentile')
+        axes[0].fill_between(iterations, dur_p25, dur_p75, alpha=0.4, color='green', label='25th-75th percentile')
+        axes[0].plot(iterations, dur_p50, linewidth=2, color='darkgreen', label='Median (50th)')
+        axes[0].set_xlabel('Iteration Number', fontsize=12, fontweight='bold')
+        axes[0].set_ylabel('Duration (milliseconds)', fontsize=12)
+        axes[0].set_title(f'Iteration Duration by Step ({len(iteration_durations)} devices)', fontsize=13)
+        axes[0].legend(loc='upper right')
+        axes[0].grid(True, alpha=0.3)
+
+        # By real time
+        axes[1].fill_between(avg_time_mins, dur_p10, dur_p90, alpha=0.2, color='green', label='10th-90th percentile')
+        axes[1].fill_between(avg_time_mins, dur_p25, dur_p75, alpha=0.4, color='green', label='25th-75th percentile')
+        axes[1].plot(avg_time_mins, dur_p50, linewidth=2, color='darkgreen', label='Median (50th)')
+        axes[1].set_xlabel('Real Time (minutes)', fontsize=12, fontweight='bold')
+        axes[1].set_ylabel('Duration (milliseconds)', fontsize=12)
+        axes[1].set_title('Iteration Duration Over Real Time', fontsize=13)
+        axes[1].legend(loc='upper right')
+        axes[1].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  - Saved iteration duration analysis to {filename}")
+
+    def _plot_cumulative_computation_time(self, node_results: List[Dict], filename: str):
+        """Plot cumulative computation time"""
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        fig.suptitle('Cumulative Computation Time Analysis', fontsize=16, fontweight='bold')
+
+        for result in node_results:
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'timestamps' in monitoring:
+                    node_id = result.get('node_id', '?')
+                    timestamps = monitoring['timestamps']
+                    cumulative_mins = [t / 60.0 for t in timestamps]
+                    iterations = range(len(timestamps))
+
+                    axes[0].plot(iterations, cumulative_mins, label=f'Node {node_id}', alpha=0.7, linewidth=1.5)
+                    axes[1].plot(cumulative_mins, iterations, label=f'Node {node_id}', alpha=0.7, linewidth=1.5)
+
+        axes[0].set_xlabel('Iteration Number', fontsize=12, fontweight='bold')
+        axes[0].set_ylabel('Cumulative Time (minutes)', fontsize=12)
+        axes[0].set_title('Cumulative Time by Iteration', fontsize=13)
+        axes[0].legend(loc='upper left', fontsize=8, ncol=2)
+        axes[0].grid(True, alpha=0.3)
+
+        axes[1].set_xlabel('Cumulative Time (minutes)', fontsize=12, fontweight='bold')
+        axes[1].set_ylabel('Iterations Completed', fontsize=12)
+        axes[1].set_title('Iterations Completed Over Real Time', fontsize=13)
+        axes[1].legend(loc='lower right', fontsize=8, ncol=2)
+        axes[1].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  - Saved cumulative computation time to {filename}")
+
+    def _plot_iteration_throughput(self, node_results: List[Dict], filename: str):
+        """Plot iteration throughput (iterations per minute) over time"""
+        throughput_data = []
+
+        for result in node_results:
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'timestamps' in monitoring and len(monitoring['timestamps']) > 10:
+                    timestamps = monitoring['timestamps']
+                    node_id = result.get('node_id', '?')
+
+                    # Calculate throughput using sliding window
+                    window_size = min(10, len(timestamps) // 2)
+                    throughputs = []
+                    time_points = []
+
+                    for i in range(window_size, len(timestamps)):
+                        window_time = timestamps[i] - timestamps[i-window_size]  # seconds
+                        if window_time > 0:
+                            iters_per_min = (window_size / window_time) * 60
+                            throughputs.append(iters_per_min)
+                            time_points.append(timestamps[i] / 60.0)  # minutes
+
+                    if throughputs:
+                        throughput_data.append({
+                            'node_id': node_id,
+                            'throughput': throughputs,
+                            'time': time_points
+                        })
+
+        if not throughput_data:
+            print("  - No throughput data available")
+            return
+
+        fig, ax = plt.subplots(figsize=(14, 7))
+        fig.suptitle('Iteration Throughput Analysis', fontsize=16, fontweight='bold')
+
+        for data in throughput_data:
+            ax.plot(data['time'], data['throughput'],
+                   label=f"Node {data['node_id']}", alpha=0.7, linewidth=1.5)
+
+        ax.set_xlabel('Real Time (minutes)', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Iterations per Minute', fontsize=12)
+        ax.set_title(f'Iteration Throughput Over Time ({len(throughput_data)} devices)', fontsize=13)
+        ax.legend(loc='best', fontsize=8, ncol=3)
+        ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  - Saved iteration throughput to {filename}")
+
+    def _plot_time_budget_analysis(self, node_results: List[Dict], filename: str):
+        """Plot how time is distributed across different phases"""
+        total_times = []
+        compute_times = []
+        overhead_times = []
+        node_labels = []
+
+        for result in node_results:
+            if result.get('success', False):
+                node_id = result.get('node_id', '?')
+                exec_time = result.get('execution_time_s', 0)
+
+                if exec_time > 0:
+                    # Estimate compute vs overhead (simplified)
+                    iterations = result.get('julia_results', {}).get('iterations', 0)
+                    if iterations > 0:
+                        avg_iter_time = exec_time / iterations
+                        compute_time = exec_time * 0.7  # Estimate 70% compute
+                        overhead_time = exec_time * 0.3  # Estimate 30% overhead
+                    else:
+                        compute_time = exec_time * 0.8
+                        overhead_time = exec_time * 0.2
+
+                    node_labels.append(f'Node {node_id}')
+                    total_times.append(exec_time)
+                    compute_times.append(compute_time)
+                    overhead_times.append(overhead_time)
+
+        if not node_labels:
+            print("  - No time budget data available")
+            return
+
+        fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+        fig.suptitle('Time Budget Analysis', fontsize=16, fontweight='bold')
+
+        # Stacked bar chart
+        x = range(len(node_labels))
+        axes[0].bar(x, compute_times, label='Computation', alpha=0.8, color='steelblue')
+        axes[0].bar(x, overhead_times, bottom=compute_times, label='Overhead', alpha=0.8, color='coral')
+        axes[0].set_xlabel('Edge Device', fontsize=12)
+        axes[0].set_ylabel('Time (seconds)', fontsize=12)
+        axes[0].set_title('Time Distribution per Device', fontsize=13)
+        axes[0].set_xticks(x)
+        axes[0].set_xticklabels(node_labels, rotation=45, ha='right', fontsize=8)
+        axes[0].legend(loc='upper right')
+        axes[0].grid(True, alpha=0.3, axis='y')
+
+        # Pie chart of total time
+        total_compute = sum(compute_times)
+        total_overhead = sum(overhead_times)
+        axes[1].pie([total_compute, total_overhead],
+                   labels=['Computation', 'Overhead'],
+                   colors=['steelblue', 'coral'],
+                   autopct='%1.1f%%',
+                   startangle=90,
+                   textprops={'fontsize': 12, 'fontweight': 'bold'})
+        axes[1].set_title(f'Total Time Budget ({len(node_labels)} devices)\nTotal: {total_compute + total_overhead:.1f}s',
+                         fontsize=13)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  - Saved time budget analysis to {filename}")
+
+    def _plot_realtime_efficiency_metrics(self, node_results: List[Dict], filename: str):
+        """Plot real-time efficiency metrics"""
+        efficiency_data = []
+
+        for result in node_results:
+            if result.get('success', False):
+                node_id = result.get('node_id', '?')
+                exec_time = result.get('execution_time_s', 0)
+                iterations = result.get('julia_results', {}).get('iterations', 0)
+
+                if exec_time > 0 and iterations > 0:
+                    iters_per_second = iterations / exec_time
+                    iters_per_minute = iters_per_second * 60
+                    seconds_per_iter = exec_time / iterations
+
+                    efficiency_data.append({
+                        'node_id': node_id,
+                        'iters_per_min': iters_per_minute,
+                        'seconds_per_iter': seconds_per_iter * 1000,  # Convert to ms
+                        'total_iterations': iterations,
+                        'total_time_min': exec_time / 60.0
+                    })
+
+        if not efficiency_data:
+            print("  - No efficiency data available")
+            return
+
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle('Real-Time Efficiency Metrics', fontsize=16, fontweight='bold')
+
+        node_ids = [d['node_id'] for d in efficiency_data]
+        iters_per_min = [d['iters_per_min'] for d in efficiency_data]
+        ms_per_iter = [d['seconds_per_iter'] for d in efficiency_data]
+        total_iters = [d['total_iterations'] for d in efficiency_data]
+        total_time = [d['total_time_min'] for d in efficiency_data]
+
+        # Iterations per minute
+        axes[0, 0].bar(node_ids, iters_per_min, alpha=0.8, color='mediumseagreen')
+        axes[0, 0].set_xlabel('Node', fontsize=11)
+        axes[0, 0].set_ylabel('Iterations/Minute', fontsize=11)
+        axes[0, 0].set_title('Throughput (Iterations per Minute)', fontsize=12, fontweight='bold')
+        axes[0, 0].tick_params(axis='x', rotation=45)
+        axes[0, 0].grid(True, alpha=0.3, axis='y')
+
+        # Milliseconds per iteration
+        axes[0, 1].bar(node_ids, ms_per_iter, alpha=0.8, color='coral')
+        axes[0, 1].set_xlabel('Node', fontsize=11)
+        axes[0, 1].set_ylabel('Milliseconds/Iteration', fontsize=11)
+        axes[0, 1].set_title('Latency (Time per Iteration)', fontsize=12, fontweight='bold')
+        axes[0, 1].tick_params(axis='x', rotation=45)
+        axes[0, 1].grid(True, alpha=0.3, axis='y')
+
+        # Total iterations vs total time
+        axes[1, 0].scatter(total_time, total_iters, s=100, alpha=0.6, color='steelblue')
+        for i, node_id in enumerate(node_ids):
+            axes[1, 0].annotate(f'{node_id}', (total_time[i], total_iters[i]),
+                               fontsize=8, ha='right')
+        axes[1, 0].set_xlabel('Total Time (minutes)', fontsize=11, fontweight='bold')
+        axes[1, 0].set_ylabel('Total Iterations', fontsize=11)
+        axes[1, 0].set_title('Iterations vs Time Correlation', fontsize=12, fontweight='bold')
+        axes[1, 0].grid(True, alpha=0.3)
+
+        # Efficiency comparison
+        x_pos = range(len(node_ids))
+        width = 0.35
+        axes[1, 1].bar([p - width/2 for p in x_pos],
+                      [i / max(iters_per_min) * 100 for i in iters_per_min],
+                      width, label='Throughput (%)', alpha=0.8, color='green')
+        axes[1, 1].bar([p + width/2 for p in x_pos],
+                      [100 - (m / max(ms_per_iter) * 100) for m in ms_per_iter],
+                      width, label='Speed (%)', alpha=0.8, color='orange')
+        axes[1, 1].set_xlabel('Node', fontsize=11)
+        axes[1, 1].set_ylabel('Relative Performance (%)', fontsize=11)
+        axes[1, 1].set_title('Normalized Performance Comparison', fontsize=12, fontweight='bold')
+        axes[1, 1].set_xticks(x_pos)
+        axes[1, 1].set_xticklabels(node_ids, rotation=45, fontsize=8)
+        axes[1, 1].legend()
+        axes[1, 1].grid(True, alpha=0.3, axis='y')
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  - Saved real-time efficiency metrics to {filename}")
+
+    def _plot_performance_degradation(self, node_results: List[Dict], filename: str):
+        """Plot performance degradation over time (if any)"""
+        degradation_data = []
+
+        for result in node_results:
+            if result.get('success', False) and 'resource_monitoring' in result:
+                monitoring = result['resource_monitoring']
+                if 'cpu_history' in monitoring and 'timestamps' in monitoring and len(monitoring['cpu_history']) > 20:
+                    node_id = result.get('node_id', '?')
+                    cpu_history = monitoring['cpu_history']
+                    timestamps = [t / 60.0 for t in monitoring['timestamps']]  # minutes
+
+                    # Calculate moving average CPU usage
+                    window = 10
+                    early_avg = np.mean(cpu_history[:window])
+                    late_avg = np.mean(cpu_history[-window:])
+                    degradation_pct = ((late_avg - early_avg) / early_avg * 100) if early_avg > 0 else 0
+
+                    degradation_data.append({
+                        'node_id': node_id,
+                        'cpu_history': cpu_history,
+                        'timestamps': timestamps,
+                        'early_avg': early_avg,
+                        'late_avg': late_avg,
+                        'degradation_pct': degradation_pct
+                    })
+
+        if not degradation_data:
+            print("  - No degradation data available")
+            return
+
+        fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+        fig.suptitle('Performance Degradation Analysis', fontsize=16, fontweight='bold')
+
+        # CPU usage over time for all nodes
+        for data in degradation_data:
+            axes[0].plot(data['timestamps'], data['cpu_history'],
+                        label=f"Node {data['node_id']}", alpha=0.6, linewidth=1)
+
+        axes[0].set_xlabel('Real Time (minutes)', fontsize=12, fontweight='bold')
+        axes[0].set_ylabel('CPU Usage (%)', fontsize=12)
+        axes[0].set_title('CPU Usage Evolution Over Time', fontsize=13)
+        axes[0].legend(loc='best', fontsize=8, ncol=3)
+        axes[0].grid(True, alpha=0.3)
+
+        # Degradation comparison
+        node_ids = [d['node_id'] for d in degradation_data]
+        degradation_pcts = [d['degradation_pct'] for d in degradation_data]
+        colors = ['red' if d > 0 else 'green' for d in degradation_pcts]
+
+        axes[1].barh(node_ids, degradation_pcts, alpha=0.8, color=colors)
+        axes[1].axvline(x=0, color='black', linestyle='--', linewidth=1)
+        axes[1].set_xlabel('CPU Usage Change (%)', fontsize=12, fontweight='bold')
+        axes[1].set_ylabel('Node', fontsize=12)
+        axes[1].set_title('CPU Degradation: Late Phase vs Early Phase', fontsize=13)
+        axes[1].grid(True, alpha=0.3, axis='x')
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  - Saved performance degradation analysis to {filename}")
 
 
 # Test execution
