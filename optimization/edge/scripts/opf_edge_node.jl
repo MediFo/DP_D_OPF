@@ -78,9 +78,9 @@ function run_node_opf(node_id::Int, config::Dict)
     cost = zeros(1)
     ν̃ = zeros(1)
 
-    # Compute sensitivities
+    # Compute sensitivities with Gurobi
     println("Computing sensitivities...")
-    Δ_op = sensitivities(gen, bus, line, B, refbus, ρ, method, α)
+    Δ_op = sensitivities(gen, bus, line, B, refbus, ρ, method, α, gurobi_env)
 
     # Generate noise
     ξ = zeros(length(bus), length(bus))
@@ -103,7 +103,7 @@ function run_node_opf(node_id::Int, config::Dict)
 
         if method == "DVP"
             μ̃[:,:,ν] = μ[:,:,ν-1] .+ ξ[:,:]
-            (θ[:,:,ν], cost[1], p[:,ν], l[:,ν]) = update_θ(gen, bus, line, B, refbus, μ̃[:,:,ν], θ̅[:,ν-1], ρ)
+            (θ[:,:,ν], cost[1], p[:,ν], l[:,ν]) = update_θ(gen, bus, line, B, refbus, μ̃[:,:,ν], θ̅[:,ν-1], ρ, gurobi_env)
             d[:,:,ν] = reveal_load(bus, gen, B, ρ, μ[:,:,ν-1], θ̅[:,ν-1], θ[:,:,ν])
             θ̅[:,ν] = update_θ̅(bus, θ[:,:,ν])
             μ[:,:,ν] = update_μ(bus, ρ, θ[:,:,ν], θ̅[:,ν], μ[:,:,ν-1])
@@ -111,7 +111,7 @@ function run_node_opf(node_id::Int, config::Dict)
         end
 
         if method == "PVP"
-            (θ[:,:,ν], cost[1], p[:,ν], l[:,ν]) = update_θ(gen, bus, line, B, refbus, μ[:,:,ν-1], θ̅[:,ν-1], ρ)
+            (θ[:,:,ν], cost[1], p[:,ν], l[:,ν]) = update_θ(gen, bus, line, B, refbus, μ[:,:,ν-1], θ̅[:,ν-1], ρ, gurobi_env)
             θ̃[:,:,ν] = θ[:,:,ν] .+ ξ[:,:]
             d[:,:,ν] = reveal_load(bus, gen, B, ρ, μ[:,:,ν-1], θ̅[:,ν-1], θ̃[:,:,ν])
             θ̅[:,ν] = update_θ̅(bus, θ̃[:,:,ν])

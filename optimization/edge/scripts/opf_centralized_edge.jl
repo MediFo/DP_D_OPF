@@ -51,8 +51,8 @@ function run_centralized_opf(config::Dict)
     println("Solving centralized OPF...")
     start_time = time()
 
-    # Solve the centralized OPF problem
-    (cost_c, dispatch_c, power_flow_c) = OPF_centralized(gen, bus, line, B, refbus)
+    # Solve the centralized OPF problem with Gurobi
+    (cost_c, dispatch_c, power_flow_c) = OPF_centralized(gen, bus, line, B, refbus, gurobi_env)
 
     total_time = time() - start_time
 
