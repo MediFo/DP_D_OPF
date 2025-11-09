@@ -12,6 +12,7 @@ Differences:
 
 using JuMP
 using Gurobi
+import MathOptInterface as MOI
 
 function update_θ_sparse(gen, bus, line, B, refbus, μ, θ̅, ρ, gurobi_env)
     """
@@ -58,6 +59,10 @@ function update_θ_sparse(gen, bus, line, B, refbus, μ, θ̅, ρ, gurobi_env)
         end
     end
 
+    # Debug: Print number of θ variables created
+    num_theta_vars = length(θ)
+    # println("  [DEBUG] Created $num_theta_vars sparse θ variables")
+
     # Generator limits (same as original line 20-21)
     @constraint(model, ϕ̲[i=1:Nb, g=bus[i].G], gen[g].p̲ <= p[g])
     @constraint(model, ϕ̅[i=1:Nb, g=bus[i].G], p[g] <= gen[g].p̅)
@@ -103,6 +108,14 @@ function update_θ_sparse(gen, bus, line, B, refbus, μ, θ̅, ρ, gurobi_env)
 
     # Solve optimization problem (same as original line 32)
     optimize!(model)
+
+    # Check termination status
+    status = termination_status(model)
+    if status != MOI.OPTIMAL
+        error("Optimization failed with status: $status. " *
+              "Primal status: $(primal_status(model)), " *
+              "Dual status: $(dual_status(model))")
+    end
 
     # Extract sparse solution (adapted from original line 34)
     θ_sol = Dict{Tuple{Int,Int}, Float64}()
