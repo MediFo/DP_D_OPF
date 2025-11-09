@@ -443,6 +443,43 @@ class ResultsExporter:
                 f"{prefix}_network_efficiency.png"
             )
 
+        # ALTERNATIVE PLOT TYPES (easier to understand than histograms)
+
+        # Plot 24: Network metrics as box plots
+        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+            self._plot_network_boxplots(
+                results['simulation_stats']['links'],
+                f"{prefix}_network_boxplots.png"
+            )
+
+        # Plot 25: Network metrics as violin plots
+        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+            self._plot_network_violin(
+                results['simulation_stats']['links'],
+                f"{prefix}_network_violin.png"
+            )
+
+        # Plot 26: Network metrics as sorted bars
+        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+            self._plot_network_sorted_bars(
+                results['simulation_stats']['links'],
+                f"{prefix}_network_sorted_bars.png"
+            )
+
+        # Plot 27: Network metrics as CDF curves
+        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+            self._plot_network_cdf(
+                results['simulation_stats']['links'],
+                f"{prefix}_network_cdf.png"
+            )
+
+        # Plot 28: Network metrics as swarm plots
+        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+            self._plot_network_swarm(
+                results['simulation_stats']['links'],
+                f"{prefix}_network_swarm.png"
+            )
+
         print("✓ Plot generation completed")
 
     def _plot_server_resources(self, servers: Dict, filename: str):
@@ -1827,6 +1864,369 @@ class ResultsExporter:
         plt.close()
 
         print(f"  - Saved network efficiency plot to {filename}")
+
+    def _plot_network_boxplots(self, links: Dict, filename: str):
+        """Plot network metrics as box plots with individual points (Alternative 1)"""
+        if not links:
+            print("  - No network links for box plot")
+            return
+
+        # Collect metrics
+        link_data = []
+        for lid, stats in links.items():
+            src = stats.get('source_server_id', '?')
+            tgt = stats.get('target_server_id', '?')
+            bw = stats.get('bandwidth_mbps', 0)
+            lat = stats.get('latency_ms', 0)
+            data = stats.get('total_data_transmitted_mb', 0)
+            num_trans = stats.get('num_transmissions', 0)
+
+            utilization = (data / bw) * 100 if bw > 0 else 0
+            efficiency = (data / lat) if lat > 0 else 0
+            avg_packet = (data / num_trans) if num_trans > 0 else 0
+
+            link_data.append({
+                'label': f"{src}→{tgt}",
+                'Utilization (%)': min(utilization, 100),
+                'Efficiency (MB/ms)': efficiency,
+                'Packet Size (MB)': avg_packet,
+                'Bandwidth (Mbps)': bw
+            })
+
+        # Create DataFrame for easier plotting
+        import pandas as pd
+        df = pd.DataFrame(link_data)
+
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle(f'Network Metrics Box Plots ({len(link_data)} links)', fontsize=16, fontweight='bold')
+
+        # Box plot for each metric
+        metrics = ['Utilization (%)', 'Efficiency (MB/ms)', 'Packet Size (MB)', 'Bandwidth (Mbps)']
+        colors = ['dodgerblue', 'limegreen', 'mediumpurple', 'coral']
+
+        for idx, (metric, color) in enumerate(zip(metrics, colors)):
+            ax = axes[idx // 2, idx % 2]
+
+            # Box plot
+            box = ax.boxplot([df[metric]], widths=0.5, patch_artist=True,
+                            boxprops=dict(facecolor=color, alpha=0.6),
+                            medianprops=dict(color='red', linewidth=2),
+                            whiskerprops=dict(linewidth=1.5),
+                            capprops=dict(linewidth=1.5))
+
+            # Overlay individual points
+            y = df[metric]
+            x = np.random.normal(1, 0.04, size=len(y))  # Add jitter
+            ax.scatter(x, y, alpha=0.5, s=50, color='black', edgecolors='white', linewidths=0.5)
+
+            ax.set_ylabel(metric, fontsize=12, fontweight='bold')
+            ax.set_xticks([1])
+            ax.set_xticklabels([f'{len(link_data)} links'])
+            ax.grid(True, alpha=0.3, axis='y')
+
+            # Add statistics text
+            stats_text = f'Median: {df[metric].median():.2f}\nMean: {df[metric].mean():.2f}\nStd: {df[metric].std():.2f}'
+            ax.text(1.3, ax.get_ylim()[1] * 0.9, stats_text, fontsize=9,
+                   bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved network box plots to {filename}")
+
+    def _plot_network_violin(self, links: Dict, filename: str):
+        """Plot network metrics as violin plots (Alternative 2)"""
+        if not links:
+            print("  - No network links for violin plot")
+            return
+
+        # Collect metrics
+        link_data = []
+        for lid, stats in links.items():
+            src = stats.get('source_server_id', '?')
+            tgt = stats.get('target_server_id', '?')
+            bw = stats.get('bandwidth_mbps', 0)
+            lat = stats.get('latency_ms', 0)
+            data = stats.get('total_data_transmitted_mb', 0)
+            num_trans = stats.get('num_transmissions', 0)
+
+            utilization = (data / bw) * 100 if bw > 0 else 0
+            efficiency = (data / lat) if lat > 0 else 0
+            avg_packet = (data / num_trans) if num_trans > 0 else 0
+
+            link_data.append({
+                'Utilization (%)': min(utilization, 100),
+                'Efficiency (MB/ms)': efficiency,
+                'Packet Size (MB)': avg_packet,
+                'Bandwidth (Mbps)': bw
+            })
+
+        import pandas as pd
+        df = pd.DataFrame(link_data)
+
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle(f'Network Metrics Violin Plots ({len(link_data)} links)', fontsize=16, fontweight='bold')
+
+        metrics = ['Utilization (%)', 'Efficiency (MB/ms)', 'Packet Size (MB)', 'Bandwidth (Mbps)']
+        colors = ['dodgerblue', 'limegreen', 'mediumpurple', 'coral']
+
+        for idx, (metric, color) in enumerate(zip(metrics, colors)):
+            ax = axes[idx // 2, idx % 2]
+
+            # Violin plot
+            parts = ax.violinplot([df[metric]], positions=[1], widths=0.7,
+                                 showmeans=True, showmedians=True)
+
+            # Color the violin
+            for pc in parts['bodies']:
+                pc.set_facecolor(color)
+                pc.set_alpha(0.6)
+
+            # Color the lines
+            parts['cmeans'].set_color('red')
+            parts['cmedians'].set_color('darkred')
+
+            ax.set_ylabel(metric, fontsize=12, fontweight='bold')
+            ax.set_xticks([1])
+            ax.set_xticklabels([f'{len(link_data)} links'])
+            ax.grid(True, alpha=0.3, axis='y')
+
+            # Add statistics
+            stats_text = f'Median: {df[metric].median():.2f}\nMean: {df[metric].mean():.2f}'
+            ax.text(1.4, ax.get_ylim()[1] * 0.95, stats_text, fontsize=10,
+                   bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.7))
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved network violin plots to {filename}")
+
+    def _plot_network_sorted_bars(self, links: Dict, filename: str):
+        """Plot each link as individual sorted bars (Alternative 3)"""
+        if not links:
+            print("  - No network links for sorted bars")
+            return
+
+        # Collect metrics
+        link_data = []
+        for lid, stats in links.items():
+            src = stats.get('source_server_id', '?')
+            tgt = stats.get('target_server_id', '?')
+            bw = stats.get('bandwidth_mbps', 0)
+            lat = stats.get('latency_ms', 0)
+            data = stats.get('total_data_transmitted_mb', 0)
+            num_trans = stats.get('num_transmissions', 0)
+
+            utilization = (data / bw) * 100 if bw > 0 else 0
+            efficiency = (data / lat) if lat > 0 else 0
+            avg_packet = (data / num_trans) if num_trans > 0 else 0
+
+            link_data.append({
+                'label': f"{src}→{tgt}",
+                'Utilization (%)': min(utilization, 100),
+                'Efficiency (MB/ms)': efficiency,
+                'Packet Size (MB)': avg_packet,
+                'Bandwidth (Mbps)': bw
+            })
+
+        import pandas as pd
+        df = pd.DataFrame(link_data)
+
+        fig, axes = plt.subplots(2, 2, figsize=(18, 14))
+        fig.suptitle(f'Network Metrics - Individual Links Sorted ({len(link_data)} links)',
+                    fontsize=16, fontweight='bold')
+
+        metrics = ['Utilization (%)', 'Efficiency (MB/ms)', 'Packet Size (MB)', 'Bandwidth (Mbps)']
+        colors = ['dodgerblue', 'limegreen', 'mediumpurple', 'coral']
+
+        for idx, (metric, color) in enumerate(zip(metrics, colors)):
+            ax = axes[idx // 2, idx % 2]
+
+            # Sort by metric value
+            df_sorted = df.sort_values(metric, ascending=False)
+
+            # Create gradient color based on value
+            values = df_sorted[metric].values
+            norm_values = (values - values.min()) / (values.max() - values.min() + 0.001)
+            bar_colors = plt.cm.RdYlGn(norm_values)
+
+            # Plot bars
+            bars = ax.bar(range(len(df_sorted)), df_sorted[metric], color=bar_colors,
+                          edgecolor='black', linewidth=0.5, alpha=0.8)
+
+            ax.set_xlabel('Links (sorted by value)', fontsize=11)
+            ax.set_ylabel(metric, fontsize=12, fontweight='bold')
+            ax.set_title(f'{metric} - Sorted View', fontsize=12)
+            ax.grid(True, alpha=0.3, axis='y')
+
+            # Add mean and median lines
+            ax.axhline(df[metric].mean(), color='red', linestyle='--', linewidth=2,
+                      label=f'Mean: {df[metric].mean():.2f}', alpha=0.7)
+            ax.axhline(df[metric].median(), color='darkblue', linestyle='--', linewidth=2,
+                      label=f'Median: {df[metric].median():.2f}', alpha=0.7)
+            ax.legend(fontsize=9)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved network sorted bars to {filename}")
+
+    def _plot_network_cdf(self, links: Dict, filename: str):
+        """Plot cumulative distribution functions (Alternative 4)"""
+        if not links:
+            print("  - No network links for CDF plot")
+            return
+
+        # Collect metrics
+        link_data = []
+        for lid, stats in links.items():
+            bw = stats.get('bandwidth_mbps', 0)
+            lat = stats.get('latency_ms', 0)
+            data = stats.get('total_data_transmitted_mb', 0)
+            num_trans = stats.get('num_transmissions', 0)
+
+            utilization = (data / bw) * 100 if bw > 0 else 0
+            efficiency = (data / lat) if lat > 0 else 0
+            avg_packet = (data / num_trans) if num_trans > 0 else 0
+
+            link_data.append({
+                'Utilization (%)': min(utilization, 100),
+                'Efficiency (MB/ms)': efficiency,
+                'Packet Size (MB)': avg_packet,
+                'Bandwidth (Mbps)': bw
+            })
+
+        import pandas as pd
+        df = pd.DataFrame(link_data)
+
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle(f'Network Metrics Cumulative Distribution ({len(link_data)} links)',
+                    fontsize=16, fontweight='bold')
+
+        metrics = ['Utilization (%)', 'Efficiency (MB/ms)', 'Packet Size (MB)', 'Bandwidth (Mbps)']
+        colors = ['dodgerblue', 'limegreen', 'mediumpurple', 'coral']
+
+        for idx, (metric, color) in enumerate(zip(metrics, colors)):
+            ax = axes[idx // 2, idx % 2]
+
+            # Sort values
+            sorted_values = np.sort(df[metric].values)
+            cumulative = np.arange(1, len(sorted_values) + 1) / len(sorted_values) * 100
+
+            # Plot CDF
+            ax.plot(sorted_values, cumulative, linewidth=3, color=color, label='CDF')
+            ax.fill_between(sorted_values, 0, cumulative, alpha=0.2, color=color)
+
+            # Add percentile markers
+            percentiles = [10, 25, 50, 75, 90]
+            for p in percentiles:
+                val = np.percentile(sorted_values, p)
+                ax.plot(val, p, 'ro', markersize=8)
+                ax.annotate(f'P{p}: {val:.2f}', xy=(val, p),
+                           xytext=(10, 5), textcoords='offset points',
+                           fontsize=8, bbox=dict(boxstyle='round,pad=0.3',
+                           facecolor='yellow', alpha=0.6))
+
+            ax.set_xlabel(metric, fontsize=12)
+            ax.set_ylabel('Cumulative Percentage (%)', fontsize=12, fontweight='bold')
+            ax.set_title(f'{metric} - CDF', fontsize=12)
+            ax.grid(True, alpha=0.3)
+            ax.set_ylim([0, 105])
+            ax.legend(fontsize=10)
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved network CDF plots to {filename}")
+
+    def _plot_network_swarm(self, links: Dict, filename: str):
+        """Plot all links as individual points (swarm/strip plot - Alternative 5)"""
+        if not links:
+            print("  - No network links for swarm plot")
+            return
+
+        # Collect metrics
+        link_data = []
+        for lid, stats in links.items():
+            src = stats.get('source_server_id', '?')
+            tgt = stats.get('target_server_id', '?')
+            bw = stats.get('bandwidth_mbps', 0)
+            lat = stats.get('latency_ms', 0)
+            data = stats.get('total_data_transmitted_mb', 0)
+            num_trans = stats.get('num_transmissions', 0)
+
+            utilization = (data / bw) * 100 if bw > 0 else 0
+            efficiency = (data / lat) if lat > 0 else 0
+            avg_packet = (data / num_trans) if num_trans > 0 else 0
+
+            link_data.append({
+                'label': f"{src}→{tgt}",
+                'Utilization (%)': min(utilization, 100),
+                'Efficiency (MB/ms)': efficiency,
+                'Packet Size (MB)': avg_packet,
+                'Bandwidth (Mbps)': bw
+            })
+
+        import pandas as pd
+        df = pd.DataFrame(link_data)
+
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle(f'Network Metrics Strip Plot - All Links ({len(link_data)} links)',
+                    fontsize=16, fontweight='bold')
+
+        metrics = ['Utilization (%)', 'Efficiency (MB/ms)', 'Packet Size (MB)', 'Bandwidth (Mbps)']
+        colors = ['dodgerblue', 'limegreen', 'mediumpurple', 'coral']
+
+        for idx, (metric, color) in enumerate(zip(metrics, colors)):
+            ax = axes[idx // 2, idx % 2]
+
+            # Strip plot with jitter
+            values = df[metric].values
+            y_positions = values
+            x_positions = np.random.normal(1, 0.08, size=len(values))  # Jitter
+
+            # Color based on value (gradient)
+            norm_values = (values - values.min()) / (values.max() - values.min() + 0.001)
+            point_colors = plt.cm.RdYlGn(norm_values)
+
+            # Plot points
+            ax.scatter(x_positions, y_positions, s=100, alpha=0.7,
+                      c=point_colors, edgecolors='black', linewidths=0.5)
+
+            # Add statistical lines
+            ax.axhline(df[metric].mean(), color='red', linestyle='--', linewidth=2.5,
+                      label=f'Mean: {df[metric].mean():.2f}', alpha=0.8)
+            ax.axhline(df[metric].median(), color='darkblue', linestyle='--', linewidth=2.5,
+                      label=f'Median: {df[metric].median():.2f}', alpha=0.8)
+
+            # Add quartile bands
+            q1 = df[metric].quantile(0.25)
+            q3 = df[metric].quantile(0.75)
+            ax.fill_between([0.6, 1.4], q1, q3, alpha=0.15, color='gray',
+                           label=f'IQR: {q1:.2f}-{q3:.2f}')
+
+            ax.set_xlim([0.6, 1.4])
+            ax.set_xticks([1])
+            ax.set_xticklabels([f'{len(link_data)} links'])
+            ax.set_ylabel(metric, fontsize=12, fontweight='bold')
+            ax.set_title(f'{metric} - Individual Links', fontsize=12)
+            ax.grid(True, alpha=0.3, axis='y')
+            ax.legend(fontsize=9, loc='best')
+
+        plt.tight_layout()
+        filepath = self.plots_dir / filename
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"  - Saved network swarm plots to {filename}")
 
 
 # Test execution
