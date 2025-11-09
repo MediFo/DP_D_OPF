@@ -119,7 +119,8 @@ class JuliaOPFExecutor:
             self.base_dir = Path(base_dir)
 
         self.edge_dir = self.base_dir / "edge"
-        self.scripts_dir = self.edge_dir / "scripts"
+        # Use root main.jl instead of edge-specific scripts
+        self.main_script = self.base_dir / "main.jl"
         self.results_dir = self.edge_dir / "results"
         self.results_dir.mkdir(exist_ok=True)
 
@@ -143,12 +144,14 @@ class JuliaOPFExecutor:
 
         # Save config to JSON
         config_dict = asdict(config)
+        # Add mode for distributed execution
+        config_dict['mode'] = 'distributed'
         config_file = self.results_dir / f"config_node_{node_id}.json"
         with open(config_file, 'w') as f:
             json.dump(config_dict, f, indent=2)
 
-        # Julia script path
-        script_path = self.scripts_dir / "opf_edge_node.jl"
+        # Julia script path - use root main.jl
+        script_path = self.main_script
 
         # Execute Julia script
         print(f"Executing Julia OPF for Node {node_id}...")
@@ -223,13 +226,16 @@ class JuliaOPFExecutor:
         if config is None:
             config = {"caseID": "testbeds/pglib_opf_case14_ieee.m"}
 
+        # Add mode for centralized execution
+        config['mode'] = 'centralized'
+
         # Save config to JSON
         config_file = self.results_dir / "config_centralized.json"
         with open(config_file, 'w') as f:
             json.dump(config, f, indent=2)
 
-        # Julia script path
-        script_path = self.scripts_dir / "opf_centralized_edge.jl"
+        # Julia script path - use root main.jl
+        script_path = self.main_script
 
         # Execute Julia script
         print("Executing Centralized Julia OPF...")

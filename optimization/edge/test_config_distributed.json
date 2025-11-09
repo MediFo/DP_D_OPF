@@ -1,0 +1,11 @@
+{
+  "node_id": 1,
+  "caseID": "testbeds/pglib_opf_case14_ieee.m",
+  "mode": "distributed",
+  "max_iterations": 1000,
+  "rho": 1000.0,
+  "tolerance": 0.01,
+  "epsilon": 1.0,
+  "alpha": 0.1,
+  "method": "PVP"
+}
