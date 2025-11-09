@@ -475,41 +475,51 @@ class ResultsExporter:
             )
 
         # ALTERNATIVE PLOT TYPES (easier to understand than histograms)
+        # Note: These require pandas - skip if not available
 
-        # Plot 24: Network metrics as box plots
-        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
-            self._plot_network_boxplots(
-                results['simulation_stats']['links'],
-                f"{prefix}_network_boxplots.png"
-            )
+        try:
+            import pandas as pd
+            HAS_PANDAS = True
+        except ImportError:
+            HAS_PANDAS = False
 
-        # Plot 25: Network metrics as violin plots
-        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
-            self._plot_network_violin(
-                results['simulation_stats']['links'],
-                f"{prefix}_network_violin.png"
-            )
+        if HAS_PANDAS:
+            # Plot 24: Network metrics as box plots
+            if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+                self._plot_network_boxplots(
+                    results['simulation_stats']['links'],
+                    f"{prefix}_network_boxplots.png"
+                )
 
-        # Plot 26: Network metrics as sorted bars
-        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
-            self._plot_network_sorted_bars(
-                results['simulation_stats']['links'],
-                f"{prefix}_network_sorted_bars.png"
-            )
+            # Plot 25: Network metrics as violin plots
+            if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+                self._plot_network_violin(
+                    results['simulation_stats']['links'],
+                    f"{prefix}_network_violin.png"
+                )
 
-        # Plot 27: Network metrics as CDF curves
-        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
-            self._plot_network_cdf(
-                results['simulation_stats']['links'],
-                f"{prefix}_network_cdf.png"
-            )
+            # Plot 26: Network metrics as sorted bars
+            if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+                self._plot_network_sorted_bars(
+                    results['simulation_stats']['links'],
+                    f"{prefix}_network_sorted_bars.png"
+                )
 
-        # Plot 28: Network metrics as swarm plots
-        if 'simulation_stats' in results and 'links' in results['simulation_stats']:
-            self._plot_network_swarm(
-                results['simulation_stats']['links'],
-                f"{prefix}_network_swarm.png"
-            )
+            # Plot 27: Network metrics as CDF curves
+            if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+                self._plot_network_cdf(
+                    results['simulation_stats']['links'],
+                    f"{prefix}_network_cdf.png"
+                )
+
+            # Plot 28: Network metrics as swarm plots
+            if 'simulation_stats' in results and 'links' in results['simulation_stats']:
+                self._plot_network_swarm(
+                    results['simulation_stats']['links'],
+                    f"{prefix}_network_swarm.png"
+                )
+        else:
+            print("  - Skipping plots 24-28 (pandas not installed)")
 
         # DUAL TIME-AXIS PLOTS (Iteration-based + Real-time in minutes)
         # User requested: "MAKE THEM DOUBLE ONE PER STEP(PER ITERATION) ONE PER REAL TIME (MINUTES)"
