@@ -2,6 +2,24 @@
 
 This folder contains the **Gurobi-optimized version** of the DP_D_OPF project for high-performance optimization.
 
+## 🚀 Quick Start
+
+```bash
+# 1. Verify setup
+julia test_setup.jl
+
+# 2. Run optimization
+julia main.jl
+
+# 3. Run edge simulations
+cd edge
+python example_distributed_opf.py
+```
+
+📖 **See [QUICK_START.md](QUICK_START.md) for detailed step-by-step guide**
+
+🛠️ **Having issues? Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)**
+
 ## Overview
 
 This is a complete copy of the main project optimized to use **Gurobi** commercial solver instead of the free HiGHS solver. Everything else remains identical to the main project.
