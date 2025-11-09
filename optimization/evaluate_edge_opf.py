@@ -28,15 +28,47 @@ import argparse
 import json
 import sys
 import os
+import logging
 from pathlib import Path
 from datetime import datetime
 
+# Setup comprehensive logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
 # Add edge module to path
+logger.info("[INIT] Adding edge module to Python path...")
 sys.path.insert(0, str(Path(__file__).parent / 'edge'))
 
-from edge_opf_simulator import EdgeOPFSimulator
-from julia_wrapper import JuliaOPFExecutor
-from visualization import ResultsExporter
+# Import modules with error handling
+logger.info("[INIT] Importing required modules...")
+try:
+    from edge_opf_simulator import EdgeOPFSimulator
+    logger.info("[INIT]   ✓ EdgeOPFSimulator imported")
+except ImportError as e:
+    logger.error(f"[INIT]   ✗ Failed to import EdgeOPFSimulator: {e}")
+    logger.error("[INIT]   Check that edge/edge_opf_simulator.py exists")
+    sys.exit(1)
+
+try:
+    from julia_wrapper import JuliaOPFExecutor
+    logger.info("[INIT]   ✓ JuliaOPFExecutor imported")
+except ImportError as e:
+    logger.error(f"[INIT]   ✗ Failed to import JuliaOPFExecutor: {e}")
+    logger.error("[INIT]   Check that edge/julia_wrapper.py exists")
+    sys.exit(1)
+
+try:
+    from visualization import ResultsExporter
+    logger.info("[INIT]   ✓ ResultsExporter imported")
+except ImportError as e:
+    logger.error(f"[INIT]   ✗ Failed to import ResultsExporter: {e}")
+    logger.error("[INIT]   Check that edge/visualization.py exists")
+    sys.exit(1)
 
 
 def create_config(args):
@@ -123,67 +155,163 @@ def create_config(args):
 
 def run_centralized(config):
     """Run centralized OPF"""
-    print("\n" + "="*80)
-    print("RUNNING CENTRALIZED OPF")
-    print("="*80 + "\n")
+    logger.info("\n" + "="*80)
+    logger.info("RUNNING CENTRALIZED OPF")
+    logger.info("="*80 + "\n")
 
-    executor = JuliaOPFExecutor()
-    result = executor.run_centralized(config)
+    try:
+        logger.info("[CENT] Step 1: Creating JuliaOPFExecutor...")
+        executor = JuliaOPFExecutor()
+        logger.info("[CENT]   ✓ JuliaOPFExecutor created")
 
-    if result['success']:
-        print("\n✓ Centralized OPF completed successfully")
-        print(f"  Execution time: {result['execution_time_s']:.2f}s")
+        logger.info("[CENT] Step 2: Running centralized OPF...")
+        logger.info(f"[CENT]   Case: {config.get('caseID', 'N/A')}")
+        logger.info(f"[CENT]   Max iterations: {config.get('max_iterations', 'N/A')}")
+        logger.info(f"[CENT]   Privacy method: {config.get('method', 'N/A')}")
+        logger.info(f"[CENT]   Epsilon: {config.get('epsilon', 'N/A')}")
 
-        if 'julia_results' in result and result['julia_results']:
-            jr = result['julia_results']
-            print(f"  Iterations: {jr.get('iterations', 'N/A')}")
-            print(f"  Final cost: ${jr.get('final_cost', 'N/A'):.2f}")
-            print(f"  Optimality loss: {jr.get('optimality_loss_percent', 'N/A'):.4f}%")
-    else:
-        print("\n✗ Centralized OPF failed")
-        print(f"  Error: {result.get('error', 'Unknown error')}")
-        return False
+        result = executor.run_centralized(config)
 
-    return result
+        if result['success']:
+            logger.info("\n[CENT] ✓ Centralized OPF completed successfully")
+            logger.info(f"[CENT]   Execution time: {result['execution_time_s']:.2f}s")
+
+            if 'julia_results' in result and result['julia_results']:
+                jr = result['julia_results']
+                logger.info(f"[CENT]   Iterations: {jr.get('iterations', 'N/A')}")
+                logger.info(f"[CENT]   Final cost: ${jr.get('final_cost', 'N/A'):.2f}")
+                logger.info(f"[CENT]   Optimality loss: {jr.get('optimality_loss_percent', 'N/A'):.4f}%")
+
+                if jr.get('optimality_loss_percent', 0) > 20.0:
+                    logger.warning(f"[CENT]   ⚠️  High optimality loss detected (> 20%)")
+                    logger.warning(f"[CENT]   This is expected with differential privacy")
+                    logger.warning(f"[CENT]   To reduce: increase --epsilon (less privacy) or decrease --alpha")
+        else:
+            logger.error("\n[CENT] ✗ Centralized OPF failed")
+            logger.error(f"[CENT]   Error: {result.get('error', 'Unknown error')}")
+            return False
+
+        return result
+
+    except Exception as e:
+        logger.error(f"[CENT] ✗ Unexpected error: {e}")
+        logger.error(f"[CENT]   Error type: {type(e).__name__}")
+        raise
 
 
 def run_distributed(config):
     """Run distributed OPF on edge infrastructure"""
-    print("\n" + "="*80)
-    print("RUNNING DISTRIBUTED OPF ON EDGE INFRASTRUCTURE")
-    print("="*80 + "\n")
+    logger.info("\n" + "="*80)
+    logger.info("RUNNING DISTRIBUTED OPF ON EDGE INFRASTRUCTURE")
+    logger.info("="*80 + "\n")
 
-    simulator = EdgeOPFSimulator(config)
-    results = simulator.run()
+    try:
+        # Create simulator
+        logger.info("[DIST] Step 1: Creating EdgeOPFSimulator...")
+        simulation_name = config.get('simulation_name', 'Distributed_OPF_Edge_Simulation')
+        logger.info(f"[DIST]   Simulation name: {simulation_name}")
 
-    print(f"\n✓ Distributed simulation completed")
-    print(f"  Total nodes: {len(results.get('node_results', []))}")
+        simulator = EdgeOPFSimulator(name=simulation_name)
+        logger.info("[DIST]   ✓ EdgeOPFSimulator created successfully")
 
-    return results
+        # Setup edge infrastructure
+        logger.info("[DIST] Step 2: Setting up edge infrastructure...")
+        edge_infra = config['edge_infrastructure']
+        server_specs = edge_infra['server_specs']
+        network_specs = edge_infra['network']
+
+        logger.info(f"[DIST]   Number of servers: {edge_infra['num_servers']}")
+        logger.info(f"[DIST]   Server specs: {server_specs['cpu_cores']} cores, {server_specs['memory_gb']} GB RAM")
+        logger.info(f"[DIST]   Network: {network_specs['bandwidth_mbps']} Mbps, {network_specs['latency_ms']} ms latency")
+
+        simulator.setup_edge_infrastructure(
+            num_servers=edge_infra['num_servers'],
+            server_cpu_cores=server_specs['cpu_cores'],
+            server_cpu_freq_ghz=server_specs['cpu_freq_ghz'],
+            server_memory_gb=server_specs['memory_gb'],
+            server_storage_gb=server_specs['storage_gb'],
+            server_power_idle_w=server_specs['power_idle_w'],
+            server_power_max_w=server_specs['power_max_w'],
+            network_bandwidth_mbps=network_specs['bandwidth_mbps'],
+            network_latency_ms=network_specs['latency_ms']
+        )
+        logger.info("[DIST]   ✓ Edge infrastructure configured")
+
+        # Setup Julia configuration
+        logger.info("[DIST] Step 3: Setting up Julia OPF configuration...")
+        from julia_wrapper import JuliaConfig
+        opf_cfg = config['opf_config']
+
+        logger.info(f"[DIST]   Case: {opf_cfg['caseID']}")
+        logger.info(f"[DIST]   Max iterations: {opf_cfg['max_iterations']}")
+        logger.info(f"[DIST]   Privacy method: {opf_cfg['method']}")
+
+        julia_config = JuliaConfig(
+            node_id=1,  # Will be overridden for each node
+            caseID=opf_cfg['caseID'],
+            max_iterations=opf_cfg['max_iterations'],
+            rho=opf_cfg['rho'],
+            tolerance=opf_cfg['tolerance'],
+            epsilon=opf_cfg['epsilon'],
+            alpha=opf_cfg['alpha'],
+            method=opf_cfg['method']
+        )
+        logger.info("[DIST]   ✓ Julia configuration created")
+
+        # Run distributed OPF
+        logger.info("[DIST] Step 4: Running distributed OPF computation...")
+        parallel = config['execution'].get('parallel', True)
+        logger.info(f"[DIST]   Parallel execution: {parallel}")
+
+        results = simulator.run_distributed_opf(julia_config=julia_config, parallel=parallel)
+
+        logger.info("[DIST]   ✓ Distributed OPF computation completed")
+
+        if 'node_results' in results:
+            logger.info(f"[DIST]   Total nodes processed: {len(results['node_results'])}")
+
+        logger.info("\n✓ Distributed simulation completed successfully")
+        return results
+
+    except KeyError as e:
+        logger.error(f"[DIST] ✗ Configuration error: Missing key {e}")
+        logger.error(f"[DIST]   Check your configuration has all required fields")
+        raise
+    except AttributeError as e:
+        logger.error(f"[DIST] ✗ Attribute error: {e}")
+        logger.error(f"[DIST]   This might indicate an API mismatch")
+        logger.error(f"[DIST]   Check that EdgeOPFSimulator has the expected methods")
+        raise
+    except Exception as e:
+        logger.error(f"[DIST] ✗ Unexpected error: {e}")
+        logger.error(f"[DIST]   Error type: {type(e).__name__}")
+        raise
 
 
 def run_encrypted(config, scheme):
     """Run encrypted OPF (Paillier, BGV, or CKKS)"""
-    print("\n" + "="*80)
-    print(f"RUNNING {scheme.upper()} ENCRYPTED OPF")
-    print("="*80 + "\n")
+    logger.info("\n" + "="*80)
+    logger.info(f"RUNNING {scheme.upper()} ENCRYPTED OPF")
+    logger.info("="*80 + "\n")
 
-    print(f"⚠️  Note: {scheme.upper()} encryption adds significant overhead")
-    print(f"⚠️  Expected overhead: ", end="")
-
+    logger.warning(f"⚠️  Note: {scheme.upper()} encryption adds significant overhead")
     if scheme == 'paillier':
-        print("~10x slower than non-encrypted")
+        logger.warning("⚠️  Expected overhead: ~10x slower than non-encrypted")
     elif scheme == 'bgv':
-        print("~300x slower than Paillier (~3000x vs non-encrypted)")
+        logger.warning("⚠️  Expected overhead: ~300x slower than Paillier (~3000x vs non-encrypted)")
     elif scheme == 'ckks':
-        print("~300x slower than Paillier (~3000x vs non-encrypted)")
+        logger.warning("⚠️  Expected overhead: ~300x slower than Paillier (~3000x vs non-encrypted)")
 
-    print()
+    logger.info("")
 
     # Change to optimization directory to run Julia scripts
+    logger.info(f"[ENC] Step 1: Preparing Julia environment...")
     original_dir = os.getcwd()
     opt_dir = Path(__file__).parent
+    logger.info(f"[ENC]   Current directory: {original_dir}")
+    logger.info(f"[ENC]   Changing to: {opt_dir}")
     os.chdir(opt_dir)
+    logger.info(f"[ENC]   ✓ Working directory changed")
 
     try:
         import subprocess
@@ -196,9 +324,34 @@ def run_encrypted(config, scheme):
         }
 
         script = script_map[scheme]
+        script_path = Path(script)
 
-        print(f"Running Julia script: {script}")
-        print("-" * 80 + "\n")
+        logger.info(f"[ENC] Step 2: Checking Julia script...")
+        logger.info(f"[ENC]   Script: {script}")
+
+        if not script_path.exists():
+            logger.error(f"[ENC]   ✗ Julia script not found: {script}")
+            logger.error(f"[ENC]   Expected location: {script_path.absolute()}")
+            return {'success': False, 'error': f'Script not found: {script}'}
+
+        logger.info(f"[ENC]   ✓ Script found: {script_path.absolute()}")
+
+        # Check if Julia is available
+        logger.info(f"[ENC] Step 3: Checking Julia installation...")
+        try:
+            julia_version = subprocess.run(['julia', '--version'], capture_output=True, text=True, timeout=5)
+            logger.info(f"[ENC]   ✓ Julia found: {julia_version.stdout.strip()}")
+        except FileNotFoundError:
+            logger.error(f"[ENC]   ✗ Julia not found in PATH")
+            logger.error(f"[ENC]   Install Julia from: https://julialang.org/downloads/")
+            return {'success': False, 'error': 'Julia not found'}
+        except Exception as e:
+            logger.warning(f"[ENC]   ⚠ Could not check Julia version: {e}")
+
+        logger.info(f"[ENC] Step 4: Running Julia script...")
+        logger.info(f"[ENC]   Command: julia {script}")
+        logger.info(f"[ENC]   Timeout: 3600 seconds (1 hour)")
+        logger.info("-" * 80 + "\n")
 
         # Run Julia script
         result = subprocess.run(
@@ -209,63 +362,106 @@ def run_encrypted(config, scheme):
         )
 
         # Print output
-        print(result.stdout)
+        logger.info(result.stdout)
         if result.stderr:
-            print("STDERR:", result.stderr)
+            if "ERROR" in result.stderr or "LoadError" in result.stderr:
+                logger.error(f"\n[ENC] Julia errors detected:")
+                logger.error(result.stderr)
+
+                # Check for common errors
+                if "Package Primes not found" in result.stderr:
+                    logger.error(f"\n[ENC] ✗ Missing Julia package: Primes")
+                    logger.error(f"[ENC]   Install with: julia -e 'using Pkg; Pkg.add(\"Primes\")'")
+                    logger.error(f"[ENC]   Or run: julia install_julia_packages.jl")
+            else:
+                logger.info("\nSTDERR:", result.stderr)
+
+        logger.info("-" * 80)
 
         # Check for results JSON
+        logger.info(f"\n[ENC] Step 5: Checking for results...")
         results_file = f"results/{scheme}_results.json"
-        if os.path.exists(results_file):
+        results_path = Path(results_file)
+
+        logger.info(f"[ENC]   Looking for: {results_path.absolute()}")
+
+        if results_path.exists():
+            logger.info(f"[ENC]   ✓ Results file found")
             with open(results_file, 'r') as f:
                 julia_results = json.load(f)
 
-            print("\n" + "="*80)
-            print(f"✓ {scheme.upper()} ENCRYPTION COMPLETED")
-            print("="*80)
-            print(f"  Total time: {julia_results.get('total_time_s', 'N/A'):.2f}s")
-            print(f"  Iterations: {julia_results.get('iterations', 'N/A')}")
-            print(f"  Final cost: ${julia_results.get('final_cost', 'N/A'):.2f}")
-            print(f"  Optimality loss: {julia_results.get('optimality_loss_percent', 'N/A'):.4f}%")
-            print(f"  Converged: {julia_results.get('converged', 'N/A')}")
+            logger.info("\n" + "="*80)
+            logger.info(f"✓ {scheme.upper()} ENCRYPTION COMPLETED")
+            logger.info("="*80)
+            logger.info(f"  Total time: {julia_results.get('total_time_s', 'N/A'):.2f}s")
+            logger.info(f"  Iterations: {julia_results.get('iterations', 'N/A')}")
+            logger.info(f"  Final cost: ${julia_results.get('final_cost', 'N/A'):.2f}")
+            logger.info(f"  Optimality loss: {julia_results.get('optimality_loss_percent', 'N/A'):.4f}%")
+            logger.info(f"  Converged: {julia_results.get('converged', 'N/A')}")
 
             if 'pct_crypto' in julia_results:
-                print(f"\n  Timing breakdown:")
-                print(f"    Optimization: {julia_results.get('pct_opt', 'N/A'):.1f}%")
-                print(f"    Cryptography: {julia_results.get('pct_crypto', 'N/A'):.1f}%")
-                print(f"    Other: {julia_results.get('pct_other', 'N/A'):.1f}%")
+                logger.info(f"\n  Timing breakdown:")
+                logger.info(f"    Optimization: {julia_results.get('pct_opt', 'N/A'):.1f}%")
+                logger.info(f"    Cryptography: {julia_results.get('pct_crypto', 'N/A'):.1f}%")
+                logger.info(f"    Other: {julia_results.get('pct_other', 'N/A'):.1f}%")
 
             return julia_results
         else:
-            print(f"\n⚠️  Results file not found: {results_file}")
+            logger.warning(f"[ENC]   ✗ Results file not found: {results_file}")
+            logger.warning(f"[ENC]   Expected at: {results_path.absolute()}")
+
+            if result.returncode != 0:
+                logger.error(f"[ENC]   Julia script failed with return code: {result.returncode}")
+                logger.error(f"[ENC]   Check the error messages above")
+
             return {'success': result.returncode == 0}
 
+    except subprocess.TimeoutExpired:
+        logger.error(f"[ENC] ✗ Julia script timeout (exceeded 1 hour)")
+        logger.error(f"[ENC]   Consider reducing --max-iter for encrypted modes")
+        return {'success': False, 'error': 'Timeout'}
+    except Exception as e:
+        logger.error(f"[ENC] ✗ Unexpected error: {e}")
+        logger.error(f"[ENC]   Error type: {type(e).__name__}")
+        raise
     finally:
+        logger.info(f"\n[ENC] Restoring original directory: {original_dir}")
         os.chdir(original_dir)
 
 
 def generate_visualizations(results, mode, output_dir, plots_dir):
     """Generate visualization plots"""
-    print("\n" + "="*80)
-    print("GENERATING VISUALIZATIONS")
-    print("="*80 + "\n")
+    logger.info("\n" + "="*80)
+    logger.info("GENERATING VISUALIZATIONS")
+    logger.info("="*80 + "\n")
 
-    # Create output directories
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    Path(plots_dir).mkdir(parents=True, exist_ok=True)
+    try:
+        logger.info("[VIZ] Step 1: Creating output directories...")
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        Path(plots_dir).mkdir(parents=True, exist_ok=True)
+        logger.info(f"[VIZ]   ✓ Output dir: {output_dir}")
+        logger.info(f"[VIZ]   ✓ Plots dir: {plots_dir}")
 
-    # Initialize exporter
-    exporter = ResultsExporter(output_dir=output_dir)
+        logger.info("[VIZ] Step 2: Initializing ResultsExporter...")
+        exporter = ResultsExporter(output_dir=output_dir)
+        logger.info("[VIZ]   ✓ ResultsExporter initialized")
 
-    # Generate plots based on mode
-    if mode == 'distributed':
-        exporter.generate_plots(results, prefix=f"{mode}")
-    else:
-        # For centralized/encrypted, we need to format results properly
-        # This would need to be wrapped in the expected format
-        print("  Note: Visualization for centralized/encrypted modes")
-        print("  uses results JSON files directly")
+        logger.info("[VIZ] Step 3: Generating plots...")
+        if mode == 'distributed':
+            logger.info(f"[VIZ]   Mode: distributed - generating full plot suite")
+            exporter.generate_plots(results, prefix=f"{mode}")
+            logger.info(f"[VIZ]   ✓ Plots generated successfully")
+        else:
+            logger.info(f"[VIZ]   Mode: {mode}")
+            logger.info(f"[VIZ]   Note: Visualization for centralized/encrypted modes")
+            logger.info(f"[VIZ]   uses results JSON files directly")
 
-    print(f"\n✓ Plots saved to: {plots_dir}")
+        logger.info(f"\n[VIZ] ✓ Plots saved to: {plots_dir}")
+
+    except Exception as e:
+        logger.error(f"[VIZ] ✗ Error generating visualizations: {e}")
+        logger.error(f"[VIZ]   Error type: {type(e).__name__}")
+        raise
 
 
 def main():
