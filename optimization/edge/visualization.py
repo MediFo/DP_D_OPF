@@ -10,8 +10,16 @@ import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
+
+# Optional: seaborn for enhanced styling
+try:
+    import seaborn as sns
+    HAS_SEABORN = True
+    sns.set_style("whitegrid")
+except ImportError:
+    HAS_SEABORN = False
+    print("⚠️  Seaborn not installed - using matplotlib defaults")
 
 
 class ResultsExporter:
