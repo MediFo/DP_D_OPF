@@ -1,0 +1,494 @@
+{
+  "device_types": {
+    "industrial_controller": {
+      "name": "Industrial Edge Controllers",
+      "description": "Ruggedized devices for harsh industrial environments",
+      "typical_tier": "standard",
+      "typical_network": ["ethernet_fast", "ethernet_gigabit"],
+      "use_cases": ["Factory automation", "SCADA systems", "Process control"],
+      "count": 7
+    },
+    "enterprise_server": {
+      "name": "Enterprise Edge Servers",
+      "description": "Business-grade servers for office and enterprise deployments",
+      "typical_tier": "standard",
+      "typical_network": ["ethernet_gigabit"],
+      "use_cases": ["Branch office computing", "Local data processing", "Business applications"],
+      "count": 7
+    },
+    "ai_ml_platform": {
+      "name": "AI/ML Edge Platforms",
+      "description": "Edge devices with AI acceleration capabilities",
+      "typical_tier": "standard",
+      "typical_network": ["ethernet_gigabit", "wifi_ac"],
+      "use_cases": ["Computer vision", "Real-time inference", "Edge AI analytics"],
+      "count": 5
+    },
+    "iot_gateway": {
+      "name": "IoT Edge Gateways",
+      "description": "Low-power devices for IoT sensor networks",
+      "typical_tier": "basic",
+      "typical_network": ["wifi_n", "lte", "ethernet_fast"],
+      "use_cases": ["Sensor data aggregation", "Protocol translation", "IoT management"],
+      "count": 8
+    },
+    "wireless_edge": {
+      "name": "Wireless/Mobile Edge Devices",
+      "description": "Devices with wireless connectivity for mobile deployments",
+      "typical_tier": "basic",
+      "typical_network": ["wifi_ac", "wifi_n", "lte"],
+      "use_cases": ["Mobile edge computing", "Temporary deployments", "Wireless sensors"],
+      "count": 5
+    },
+    "embedded_dev": {
+      "name": "Embedded/Development Platforms",
+      "description": "Single-board computers and development platforms",
+      "typical_tier": "basic",
+      "typical_network": ["wifi_ac", "wifi_n"],
+      "use_cases": ["Prototyping", "Education", "Hobby projects", "Edge experimentation"],
+      "count": 4
+    }
+  },
+  "network_profiles": {
+    "fiber": {
+      "bandwidth_mbps": 1000.0,
+      "latency_ms": 2.0,
+      "packet_loss_rate": 0.0001,
+      "description": "High-speed fiber optic connection"
+    },
+    "ethernet_gigabit": {
+      "bandwidth_mbps": 1000.0,
+      "latency_ms": 5.0,
+      "packet_loss_rate": 0.0005,
+      "description": "Gigabit Ethernet"
+    },
+    "ethernet_fast": {
+      "bandwidth_mbps": 100.0,
+      "latency_ms": 10.0,
+      "packet_loss_rate": 0.001,
+      "description": "Fast Ethernet 100Mbps"
+    },
+    "wifi_ac": {
+      "bandwidth_mbps": 300.0,
+      "latency_ms": 15.0,
+      "packet_loss_rate": 0.002,
+      "description": "WiFi 802.11ac"
+    },
+    "wifi_n": {
+      "bandwidth_mbps": 100.0,
+      "latency_ms": 25.0,
+      "packet_loss_rate": 0.005,
+      "description": "WiFi 802.11n"
+    },
+    "lte": {
+      "bandwidth_mbps": 50.0,
+      "latency_ms": 40.0,
+      "packet_loss_rate": 0.01,
+      "description": "4G LTE connection"
+    },
+    "low_bandwidth": {
+      "bandwidth_mbps": 10.0,
+      "latency_ms": 60.0,
+      "packet_loss_rate": 0.02,
+      "description": "Low bandwidth connection"
+    }
+  },
+  "devices": [
+    {
+      "id": 1,
+      "name": "Siemens SIMATIC IPC627E",
+      "description": "Industrial PC for automation",
+      "device_type": "industrial_controller",
+      "tier": "standard",
+      "network_type": "ethernet_fast",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 2.0, "memory_gb": 8.0, "storage_gb": 256.0, "power_idle_w": 30.0, "power_max_w": 80.0},
+      "performance": {"compute_efficiency": 0.85, "memory_efficiency": 0.9, "workload_capacity": 0.9, "reliability": 0.96}
+    },
+    {
+      "id": 2,
+      "name": "Dell Edge Gateway 5200",
+      "description": "Industrial IoT gateway",
+      "device_type": "industrial_controller",
+      "tier": "standard",
+      "network_type": "ethernet_fast",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 1.9, "memory_gb": 8.0, "storage_gb": 128.0, "power_idle_w": 28.0, "power_max_w": 75.0},
+      "performance": {"compute_efficiency": 0.82, "memory_efficiency": 0.88, "workload_capacity": 0.85, "reliability": 0.94}
+    },
+    {
+      "id": 3,
+      "name": "Advantech ARK-2250",
+      "description": "Fanless embedded controller",
+      "device_type": "industrial_controller",
+      "tier": "standard",
+      "network_type": "ethernet_fast",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 2, "cpu_freq_ghz": 1.8, "memory_gb": 4.0, "storage_gb": 128.0, "power_idle_w": 15.0, "power_max_w": 40.0},
+      "performance": {"compute_efficiency": 0.75, "memory_efficiency": 0.8, "workload_capacity": 0.7, "reliability": 0.92}
+    },
+    {
+      "id": 4,
+      "name": "Beckhoff C6015",
+      "description": "Ultra-compact industrial PC",
+      "device_type": "industrial_controller",
+      "tier": "standard",
+      "network_type": "ethernet_fast",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 2, "cpu_freq_ghz": 1.75, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 12.0, "power_max_w": 35.0},
+      "performance": {"compute_efficiency": 0.7, "memory_efficiency": 0.75, "workload_capacity": 0.65, "reliability": 0.93}
+    },
+    {
+      "id": 5,
+      "name": "Kontron KBox C-102",
+      "description": "Rugged box PC",
+      "device_type": "industrial_controller",
+      "tier": "standard",
+      "network_type": "ethernet_fast",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 2, "cpu_freq_ghz": 1.6, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 18.0, "power_max_w": 45.0},
+      "performance": {"compute_efficiency": 0.68, "memory_efficiency": 0.72, "workload_capacity": 0.62, "reliability": 0.90}
+    },
+    {
+      "id": 6,
+      "name": "Cincoze DS-1200",
+      "description": "Rugged GPU edge computer",
+      "device_type": "industrial_controller",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 6, "cpu_freq_ghz": 2.4, "memory_gb": 16.0, "storage_gb": 256.0, "power_idle_w": 50.0, "power_max_w": 150.0},
+      "performance": {"compute_efficiency": 0.92, "memory_efficiency": 0.95, "workload_capacity": 1.0, "reliability": 0.95}
+    },
+    {
+      "id": 7,
+      "name": "Stratus ztC Edge",
+      "description": "Virtualized edge platform",
+      "device_type": "industrial_controller",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 8, "cpu_freq_ghz": 2.8, "memory_gb": 32.0, "storage_gb": 512.0, "power_idle_w": 65.0, "power_max_w": 180.0},
+      "performance": {"compute_efficiency": 1.05, "memory_efficiency": 1.08, "workload_capacity": 1.2, "reliability": 0.97}
+    },
+    {
+      "id": 8,
+      "name": "Intel NUC Mini PC",
+      "description": "Compact office edge device",
+      "device_type": "enterprise_server",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "office",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 2.4, "memory_gb": 16.0, "storage_gb": 512.0, "power_idle_w": 25.0, "power_max_w": 65.0},
+      "performance": {"compute_efficiency": 0.95, "memory_efficiency": 1.0, "workload_capacity": 0.85, "reliability": 0.93}
+    },
+    {
+      "id": 9,
+      "name": "Cisco IOx Gateway",
+      "description": "Network edge platform",
+      "device_type": "enterprise_server",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "enterprise",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 2.5, "memory_gb": 12.0, "storage_gb": 256.0, "power_idle_w": 35.0, "power_max_w": 95.0},
+      "performance": {"compute_efficiency": 0.95, "memory_efficiency": 0.98, "workload_capacity": 0.95, "reliability": 0.94}
+    },
+    {
+      "id": 10,
+      "name": "Fujitsu PRIMERGY TX1320",
+      "description": "SMB tower server",
+      "device_type": "enterprise_server",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "enterprise",
+      "specs": {"cpu_cores": 6, "cpu_freq_ghz": 3.0, "memory_gb": 16.0, "storage_gb": 500.0, "power_idle_w": 55.0, "power_max_w": 160.0},
+      "performance": {"compute_efficiency": 1.05, "memory_efficiency": 1.02, "workload_capacity": 1.1, "reliability": 0.95}
+    },
+    {
+      "id": 11,
+      "name": "HPE ProLiant MicroServer Gen10",
+      "description": "Ultra-micro tower server",
+      "device_type": "enterprise_server",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "office",
+      "specs": {"cpu_cores": 8, "cpu_freq_ghz": 3.2, "memory_gb": 32.0, "storage_gb": 1000.0, "power_idle_w": 45.0, "power_max_w": 130.0},
+      "performance": {"compute_efficiency": 1.08, "memory_efficiency": 1.05, "workload_capacity": 1.15, "reliability": 0.94}
+    },
+    {
+      "id": 12,
+      "name": "OnLogic Helix 500",
+      "description": "Fanless edge computer",
+      "device_type": "enterprise_server",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "office",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 2.3, "memory_gb": 16.0, "storage_gb": 256.0, "power_idle_w": 20.0, "power_max_w": 55.0},
+      "performance": {"compute_efficiency": 0.92, "memory_efficiency": 0.95, "workload_capacity": 0.88, "reliability": 0.91}
+    },
+    {
+      "id": 13,
+      "name": "Lanner LEC-7242",
+      "description": "Network appliance",
+      "device_type": "enterprise_server",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "enterprise",
+      "specs": {"cpu_cores": 6, "cpu_freq_ghz": 2.6, "memory_gb": 16.0, "storage_gb": 256.0, "power_idle_w": 38.0, "power_max_w": 105.0},
+      "performance": {"compute_efficiency": 0.98, "memory_efficiency": 0.97, "workload_capacity": 0.98, "reliability": 0.92}
+    },
+    {
+      "id": 14,
+      "name": "Lenovo ThinkEdge SE70",
+      "description": "AI-enabled edge server",
+      "device_type": "enterprise_server",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "enterprise",
+      "specs": {"cpu_cores": 8, "cpu_freq_ghz": 2.8, "memory_gb": 32.0, "storage_gb": 512.0, "power_idle_w": 60.0, "power_max_w": 170.0},
+      "performance": {"compute_efficiency": 1.08, "memory_efficiency": 1.1, "workload_capacity": 1.2, "reliability": 0.96}
+    },
+    {
+      "id": 15,
+      "name": "NVIDIA Jetson AGX Xavier",
+      "description": "AI edge computing platform",
+      "device_type": "ai_ml_platform",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "field",
+      "specs": {"cpu_cores": 8, "cpu_freq_ghz": 2.26, "memory_gb": 32.0, "storage_gb": 256.0, "power_idle_w": 10.0, "power_max_w": 60.0},
+      "performance": {"compute_efficiency": 1.15, "memory_efficiency": 1.2, "workload_capacity": 1.25, "reliability": 0.93}
+    },
+    {
+      "id": 16,
+      "name": "Google Coral Dev Board",
+      "description": "ML accelerator edge device",
+      "device_type": "ai_ml_platform",
+      "tier": "standard",
+      "network_type": "wifi_ac",
+      "location_type": "office",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 1.5, "memory_gb": 4.0, "storage_gb": 32.0, "power_idle_w": 6.0, "power_max_w": 18.0},
+      "performance": {"compute_efficiency": 0.85, "memory_efficiency": 0.88, "workload_capacity": 0.75, "reliability": 0.88}
+    },
+    {
+      "id": 17,
+      "name": "NVIDIA Jetson Nano",
+      "description": "Entry-level AI platform",
+      "device_type": "ai_ml_platform",
+      "tier": "basic",
+      "network_type": "wifi_ac",
+      "location_type": "remote",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 1.43, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 5.0, "power_max_w": 10.0},
+      "performance": {"compute_efficiency": 0.7, "memory_efficiency": 0.75, "workload_capacity": 0.6, "reliability": 0.85}
+    },
+    {
+      "id": 18,
+      "name": "BeagleBone AI-64",
+      "description": "Open-source AI board",
+      "device_type": "ai_ml_platform",
+      "tier": "basic",
+      "network_type": "wifi_ac",
+      "location_type": "office",
+      "specs": {"cpu_cores": 2, "cpu_freq_ghz": 2.0, "memory_gb": 4.0, "storage_gb": 32.0, "power_idle_w": 5.0, "power_max_w": 15.0},
+      "performance": {"compute_efficiency": 0.75, "memory_efficiency": 0.78, "workload_capacity": 0.65, "reliability": 0.84}
+    },
+    {
+      "id": 19,
+      "name": "Neousys Nuvo-8240GC",
+      "description": "GPU-accelerated AI system",
+      "device_type": "ai_ml_platform",
+      "tier": "standard",
+      "network_type": "ethernet_gigabit",
+      "location_type": "data_center",
+      "specs": {"cpu_cores": 8, "cpu_freq_ghz": 3.2, "memory_gb": 32.0, "storage_gb": 512.0, "power_idle_w": 80.0, "power_max_w": 250.0},
+      "performance": {"compute_efficiency": 1.18, "memory_efficiency": 1.15, "workload_capacity": 1.3, "reliability": 0.95}
+    },
+    {
+      "id": 20,
+      "name": "Moxa MC-1100",
+      "description": "RISC embedded computer",
+      "device_type": "iot_gateway",
+      "tier": "basic",
+      "network_type": "ethernet_fast",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 1, "cpu_freq_ghz": 1.2, "memory_gb": 2.0, "storage_gb": 32.0, "power_idle_w": 8.0, "power_max_w": 20.0},
+      "performance": {"compute_efficiency": 0.5, "memory_efficiency": 0.58, "workload_capacity": 0.35, "reliability": 0.92}
+    },
+    {
+      "id": 21,
+      "name": "Advantech UNO-2271G",
+      "description": "Compact IoT gateway",
+      "device_type": "iot_gateway",
+      "tier": "basic",
+      "network_type": "ethernet_fast",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 2, "cpu_freq_ghz": 1.6, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 10.0, "power_max_w": 28.0},
+      "performance": {"compute_efficiency": 0.65, "memory_efficiency": 0.7, "workload_capacity": 0.55, "reliability": 0.89}
+    },
+    {
+      "id": 22,
+      "name": "Portwell WEBS-2170",
+      "description": "Wireless edge box",
+      "device_type": "iot_gateway",
+      "tier": "basic",
+      "network_type": "lte",
+      "location_type": "field",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 2.0, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 15.0, "power_max_w": 40.0},
+      "performance": {"compute_efficiency": 0.75, "memory_efficiency": 0.78, "workload_capacity": 0.68, "reliability": 0.87}
+    },
+    {
+      "id": 23,
+      "name": "Axiomtek eBOX800-FL",
+      "description": "Fanless IoT system",
+      "device_type": "iot_gateway",
+      "tier": "basic",
+      "network_type": "wifi_n",
+      "location_type": "remote",
+      "specs": {"cpu_cores": 2, "cpu_freq_ghz": 1.6, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 9.0, "power_max_w": 25.0},
+      "performance": {"compute_efficiency": 0.62, "memory_efficiency": 0.67, "workload_capacity": 0.52, "reliability": 0.88}
+    },
+    {
+      "id": 24,
+      "name": "AAEON UP Squared",
+      "description": "IoT maker board",
+      "device_type": "iot_gateway",
+      "tier": "basic",
+      "network_type": "wifi_ac",
+      "location_type": "office",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 2.0, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 7.0, "power_max_w": 18.0},
+      "performance": {"compute_efficiency": 0.72, "memory_efficiency": 0.75, "workload_capacity": 0.62, "reliability": 0.85}
+    },
+    {
+      "id": 25,
+      "name": "Dell Gateway 3001",
+      "description": "Edge IoT gateway",
+      "device_type": "iot_gateway",
+      "tier": "basic",
+      "network_type": "ethernet_fast",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 2, "cpu_freq_ghz": 1.8, "memory_gb": 4.0, "storage_gb": 128.0, "power_idle_w": 12.0, "power_max_w": 32.0},
+      "performance": {"compute_efficiency": 0.68, "memory_efficiency": 0.72, "workload_capacity": 0.58, "reliability": 0.90}
+    },
+    {
+      "id": 26,
+      "name": "Siemens IOT2040",
+      "description": "Industrial IoT gateway",
+      "device_type": "iot_gateway",
+      "tier": "basic",
+      "network_type": "ethernet_fast",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 2, "cpu_freq_ghz": 1.7, "memory_gb": 2.0, "storage_gb": 32.0, "power_idle_w": 8.0, "power_max_w": 22.0},
+      "performance": {"compute_efficiency": 0.58, "memory_efficiency": 0.62, "workload_capacity": 0.48, "reliability": 0.91}
+    },
+    {
+      "id": 27,
+      "name": "Cisco IR829",
+      "description": "Industrial wireless router",
+      "device_type": "iot_gateway",
+      "tier": "basic",
+      "network_type": "lte",
+      "location_type": "field",
+      "specs": {"cpu_cores": 2, "cpu_freq_ghz": 1.5, "memory_gb": 2.0, "storage_gb": 32.0, "power_idle_w": 10.0, "power_max_w": 30.0},
+      "performance": {"compute_efficiency": 0.55, "memory_efficiency": 0.6, "workload_capacity": 0.45, "reliability": 0.89}
+    },
+    {
+      "id": 28,
+      "name": "Raspberry Pi 4 (8GB)",
+      "description": "Low-power edge device",
+      "device_type": "wireless_edge",
+      "tier": "basic",
+      "network_type": "wifi_ac",
+      "location_type": "remote",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 1.5, "memory_gb": 8.0, "storage_gb": 128.0, "power_idle_w": 3.5, "power_max_w": 15.0},
+      "performance": {"compute_efficiency": 0.65, "memory_efficiency": 0.78, "workload_capacity": 0.55, "reliability": 0.85}
+    },
+    {
+      "id": 29,
+      "name": "Raspberry Pi 5",
+      "description": "Latest Pi generation",
+      "device_type": "wireless_edge",
+      "tier": "basic",
+      "network_type": "wifi_ac",
+      "location_type": "remote",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 2.4, "memory_gb": 8.0, "storage_gb": 128.0, "power_idle_w": 4.5, "power_max_w": 12.0},
+      "performance": {"compute_efficiency": 0.82, "memory_efficiency": 0.85, "workload_capacity": 0.72, "reliability": 0.86}
+    },
+    {
+      "id": 30,
+      "name": "Asus Tinker Board 2",
+      "description": "ARM SBC",
+      "device_type": "wireless_edge",
+      "tier": "basic",
+      "network_type": "wifi_n",
+      "location_type": "remote",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 1.8, "memory_gb": 4.0, "storage_gb": 32.0, "power_idle_w": 4.0, "power_max_w": 12.0},
+      "performance": {"compute_efficiency": 0.62, "memory_efficiency": 0.7, "workload_capacity": 0.52, "reliability": 0.82}
+    },
+    {
+      "id": 31,
+      "name": "Rock Pi 4C Plus",
+      "description": "Rockchip SBC",
+      "device_type": "wireless_edge",
+      "tier": "basic",
+      "network_type": "wifi_n",
+      "location_type": "remote",
+      "specs": {"cpu_cores": 6, "cpu_freq_ghz": 2.0, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 6.0, "power_max_w": 16.0},
+      "performance": {"compute_efficiency": 0.7, "memory_efficiency": 0.73, "workload_capacity": 0.62, "reliability": 0.81}
+    },
+    {
+      "id": 32,
+      "name": "Orange Pi 5",
+      "description": "Affordable wireless edge",
+      "device_type": "wireless_edge",
+      "tier": "basic",
+      "network_type": "wifi_ac",
+      "location_type": "remote",
+      "specs": {"cpu_cores": 8, "cpu_freq_ghz": 2.4, "memory_gb": 8.0, "storage_gb": 64.0, "power_idle_w": 5.0, "power_max_w": 14.0},
+      "performance": {"compute_efficiency": 0.78, "memory_efficiency": 0.8, "workload_capacity": 0.68, "reliability": 0.83}
+    },
+    {
+      "id": 33,
+      "name": "Arduino Portenta X8",
+      "description": "Industrial IoT module",
+      "device_type": "embedded_dev",
+      "tier": "basic",
+      "network_type": "wifi_ac",
+      "location_type": "industrial",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 1.8, "memory_gb": 2.0, "storage_gb": 16.0, "power_idle_w": 3.0, "power_max_w": 8.0},
+      "performance": {"compute_efficiency": 0.55, "memory_efficiency": 0.6, "workload_capacity": 0.42, "reliability": 0.80}
+    },
+    {
+      "id": 34,
+      "name": "Odroid N2+",
+      "description": "Development SBC",
+      "device_type": "embedded_dev",
+      "tier": "basic",
+      "network_type": "wifi_n",
+      "location_type": "office",
+      "specs": {"cpu_cores": 6, "cpu_freq_ghz": 2.4, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 5.0, "power_max_w": 13.0},
+      "performance": {"compute_efficiency": 0.75, "memory_efficiency": 0.72, "workload_capacity": 0.6, "reliability": 0.82}
+    },
+    {
+      "id": 35,
+      "name": "Pine64 ROCKPro64",
+      "description": "Open-source SBC",
+      "device_type": "embedded_dev",
+      "tier": "basic",
+      "network_type": "wifi_n",
+      "location_type": "office",
+      "specs": {"cpu_cores": 6, "cpu_freq_ghz": 2.0, "memory_gb": 4.0, "storage_gb": 64.0, "power_idle_w": 6.0, "power_max_w": 15.0},
+      "performance": {"compute_efficiency": 0.68, "memory_efficiency": 0.7, "workload_capacity": 0.58, "reliability": 0.79}
+    },
+    {
+      "id": 36,
+      "name": "Banana Pi M5",
+      "description": "Quad-core dev board",
+      "device_type": "embedded_dev",
+      "tier": "basic",
+      "network_type": "wifi_ac",
+      "location_type": "office",
+      "specs": {"cpu_cores": 4, "cpu_freq_ghz": 2.0, "memory_gb": 4.0, "storage_gb": 32.0, "power_idle_w": 4.0, "power_max_w": 11.0},
+      "performance": {"compute_efficiency": 0.65, "memory_efficiency": 0.68, "workload_capacity": 0.5, "reliability": 0.81}
+    }
+  ]
+}
